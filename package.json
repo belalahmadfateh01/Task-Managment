@@ -1,0 +1,26 @@
+{
+  "name": "task-managment",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file=.env src/server.js",
+    "dev": "node --env-file=.env --watch src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/belalahmadfateh01/Task-Managment.git"
+  },
+  "author": "Belal Ahmad fateh",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/belalahmadfateh01/Task-Managment/issues"
+  },
+  "homepage": "https://github.com/belalahmadfateh01/Task-Managment#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "pg": "^8.23.1"
+  }
+}
