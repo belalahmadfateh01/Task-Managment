@@ -20,7 +20,9 @@
   },
   "homepage": "https://github.com/belalahmadfateh01/Task-Managment#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.1"
   }
 }
