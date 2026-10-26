@@ -1,11 +1,11 @@
 import {Router} from 'express';
 import {
-    registertionController,
-    loginController,
-    updateEmployeeController,
     deleteEmployeeController,
     getAllEmployeeController,
-    getEmployeeController
+    getEmployeeController,
+    loginController,
+    registertionController,
+    updateEmployeeController
 } from "../controllers/employees.controller.js";
 import authentication from "../middlewares/authentication.js";
 import authorization from "../middlewares/authorization.js";
@@ -17,7 +17,7 @@ router.get("/", authentication, authorization("admin"), getAllEmployeeController
 router.get("/:id", authentication, getEmployeeController);
 router.post("/login", loginController);
 router.patch("/:id", authentication, updateEmployeeController);
-router.delete("/:id",authentication, deleteEmployeeController);
+router.delete("/:id", authentication, deleteEmployeeController);
 
 
 export default router;

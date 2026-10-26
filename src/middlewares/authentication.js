@@ -15,14 +15,8 @@ const authentication = (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
-
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.employee = decoded;
-        console.log(req.employee);
-
         next();
     } catch (error) {
         throw new ApiError(401, "Invalid or expired token");

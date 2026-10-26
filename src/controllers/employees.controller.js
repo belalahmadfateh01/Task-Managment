@@ -1,4 +1,11 @@
-import {registertion, login, updateEmployee, deleteEmployee, getEmployee, getAllEmployee} from "../services/employees.service.js";
+import {
+    deleteEmployee,
+    getAllEmployee,
+    getEmployee,
+    login,
+    registertion,
+    updateEmployee
+} from "../services/employees.service.js";
 import catchAsyncError from "../utils/catchAsyncError.js";
 
 const registertionController = catchAsyncError(async (req, res) => {
@@ -19,7 +26,7 @@ const loginController = catchAsyncError(async (req, res) => {
     })
 });
 const updateEmployeeController = catchAsyncError(async (req, res) => {
-    const employee = await updateEmployee(req.params.id,req.employee.id, req.employee.role, req.body);
+    const employee = await updateEmployee(req.params.id, req.employee.id, req.employee.role, req.body);
     res.status(200).json({
         success: true,
         status: 200,
@@ -28,7 +35,7 @@ const updateEmployeeController = catchAsyncError(async (req, res) => {
 });
 const deleteEmployeeController = catchAsyncError(async (req, res) => {
     console.log(req.params, req.employee.id, req.employee.role);
-    const employee = await deleteEmployee(req.params.id,req.employee.id, req.employee.role);
+    const employee = await deleteEmployee(req.params.id, req.employee.id, req.employee.role);
     res.status(200).json({
         success: true,
         status: 200,
@@ -53,4 +60,11 @@ const getAllEmployeeController = catchAsyncError(async (req, res) => {
     });
 });
 
-export {registertionController, loginController, updateEmployeeController, deleteEmployeeController, getAllEmployeeController, getEmployeeController};
+export {
+    registertionController,
+    loginController,
+    updateEmployeeController,
+    deleteEmployeeController,
+    getAllEmployeeController,
+    getEmployeeController
+};
