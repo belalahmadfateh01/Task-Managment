@@ -6,7 +6,8 @@ import {
     getReportByIdController,
     reportStatsController,
     updateReportController,
-    employeeReportStatsController
+    employeeReportStatsController,
+    deleteReportContrller
 } from "../controllers/reports.controller.js";
 import authentication from "../middlewares/authentication.js";
 import authorization from "../middlewares/authorization.js";
@@ -20,5 +21,6 @@ router.get("/stats", authentication, reportStatsController);
 router.get("/teacher/:teacherId/stats", authentication, employeeReportStatsController);
 router.get('/:id', authentication, getReportByIdController);
 router.patch('/:id', authentication, updateReportController);
+router.delete('/:id', authentication, deleteReportContrller);
 
 export default router;

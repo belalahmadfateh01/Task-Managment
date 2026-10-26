@@ -1,11 +1,12 @@
 import {
     createReport,
+    deleteReport,
     employeeReports,
+    employeeReportStats,
     getAllReport,
     getReportById,
     reportStats,
-    updateReport,
-    employeeReportStats
+    updateReport
 } from "../services/reports.service.js";
 import catchAsyncError from "../utils/catchAsyncError.js";
 
@@ -57,6 +58,14 @@ const employeeReportStatsController = catchAsyncError(async (req, res) => {
         message: stats
     });
 });
+const deleteReportContrller = catchAsyncError(async (req, res) => {
+    const Report = await deleteReport(req.params.id, req.employee);
+    res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: "Report deleted successfully."
+    })
+})
 
 export {
     createReportController,
@@ -65,5 +74,6 @@ export {
     updateReportController,
     employeeReportsController,
     reportStatsController,
-    employeeReportStatsController
+    employeeReportStatsController,
+    deleteReportContrller
 };

@@ -126,5 +126,30 @@ const employeeReportStats = async (id, employee) => {
         acceptedReports: Number(rows[0].acceptedReports),
     };
 };
+const deleteReport = async (id, employee) => {
+    if (employee.role !== "admin" && employee.role !== "teacher") {
+        throw new ApiError(403, "Access denied");
+    }
+    const result = await pool.query(
+        "SELECT id, teacher_id FROM reports WHERE id = $1",
+        [id]
+    );
+    if (result.rowCount === 0) {
+        throw new ApiError(404, "Report not found");
+    }
+    const report = result.rows[0];
 
-export {createReport, getAllReport, getReportById, employeeReports, updateReport, reportStats, employeeReportStats};
+    if (
+        employee.role === "teacher" &&
+        report.teacher_id !== employee.id
+    ) {
+        throw new ApiError(403, "You cannot delete this report");
+    }
+
+    await pool.query(
+        "DELETE FROM reports WHERE id = $1",
+        [id]
+    );
+}
+
+export {createReport, getAllReport, getReportById, employeeReports, updateReport, reportStats, employeeReportStats, deleteReport};
