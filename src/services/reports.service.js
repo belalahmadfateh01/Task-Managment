@@ -40,9 +40,10 @@ const updateReport = async (id, employee, data) => {
     }
     if (employee.role === "admin") {
         const newReport = await pool.query(`UPDATE reports
-                                            SET state    = $1,
-                                                admin_id = $2
-                                            WHERE id = $3 RETURNING state`, [data.state, employee.id, id]);
+                                            SET status   = $1,
+                                                admin_id = $2,
+                                                updated_at = CURRENT_TIMESTAMP
+                                            WHERE id = $3 RETURNING status`, [data.status, employee.id, id]);
         return newReport.rows[0];
     }
     if (employee.userId === reports.rows.teacher_id) {
@@ -79,17 +80,16 @@ const updateReport = async (id, employee, data) => {
 };
 const reportStats = async () => {
     const allReport = await pool.query(`SELECT COUNT(*) AS total_reports,
-                                               COUNT(*)    FILTER (WHERE status = 'pending') AS pending_reports, COUNT(*) FILTER (WHERE status = 'accept') AS accepted_reports
+                                               COUNT(*)    FILTER (WHERE status = 'pending') AS pending_reports, COUNT(*) FILTER (WHERE status = 'accept') AS accepted_reports, 
+                                               COUNT(*) FILTER (WHERE status = 'comment') AS comment_reports
                                         FROM reports`);
     return allReport.rows;
 }
 const employeeReportStats = async (id, employee) => {
-    // Check authorization
     if (employee.role !== "admin" && employee.role !== "teacher") {
         throw new ApiError(403, "Access denied");
     }
 
-    // A teacher can only see their own statistics
     if (employee.role === "teacher" && employee.id !== teacherId) {
         throw new ApiError(403, "Access denied");
     }
@@ -99,12 +99,6 @@ const employeeReportStats = async (id, employee) => {
                 FROM reports
                 WHERE teacher_id = $1)    AS "totalReports",
 
-               (SE-ahmad01
-                   LECT COUNT(*)
-                FROM comments c
-                         JOIN reports r ON r.id = c.report_id
-                WHERE r.teacher_id = $1)  AS "totalComments",
-
                (SELECT COUNT(*)
                 FROM reports
                 WHERE teacher_id = $1
@@ -113,7 +107,12 @@ const employeeReportStats = async (id, employee) => {
                (SELECT COUNT(*)
                 FROM reports
                 WHERE teacher_id = $1
-                  AND status = 'accept')  AS "acceptedReports"
+                  AND status = 'accept')  AS "acceptedReports",
+
+               (SELECT COUNT(*)
+                FROM reports
+                WHERE teacher_id = $1
+                  AND status = 'comment') AS "commntedReports",
     `;
 
     const {rows} = await pool.query(query, [teacherId]);
@@ -121,9 +120,9 @@ const employeeReportStats = async (id, employee) => {
     return {
         teacherId,
         totalReports: Number(rows[0].totalReports),
-        totalComments: Number(rows[0].totalComments),
         pendingReports: Number(rows[0].pendingReports),
         acceptedReports: Number(rows[0].acceptedReports),
+        commentedReports: Number(rows[0].totalComments),
     };
 };
 const deleteReport = async (id, employee) => {
@@ -152,4 +151,13 @@ const deleteReport = async (id, employee) => {
     );
 }
 
-export {createReport, getAllReport, getReportById, employeeReports, updateReport, reportStats, employeeReportStats, deleteReport};
+export {
+    createReport,
+    getAllReport,
+    getReportById,
+    employeeReports,
+    updateReport,
+    reportStats,
+    employeeReportStats,
+    deleteReport
+};
