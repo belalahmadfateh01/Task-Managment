@@ -3,3 +3,6 @@
 @theme {
   --color-primary: #3f8efc;
 }
+body {
+  font-family: "Dana", sans-serif;
+}

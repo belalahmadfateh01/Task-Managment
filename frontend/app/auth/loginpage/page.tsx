@@ -1,18 +1,16 @@
 import Image from "next/image";
-import StepProgress from "../StepProgress/page";
+import StepProgress from "../../../components/StepProgress/page";
 import Link from "next/dist/client/link";
 export function LoginPage() {
   return (
     <section className="flex w-full h-screen ">
       <div
         className="bg-[#3F8EFC]
- w-1/2 px-20 py-30 flex justify-center items-center"
-      >
+ w-1/2 px-20 py-30 flex justify-center items-center">
         <div className=" text-right bg-white grid grid-col-1 gap-x-10  h-170 w-130 px-6 py-2 rounded-2xl pb-10">
           <Link
             href="/"
-            className=" flex items-center justify-end  justify-items-end gap-x-2 gap-y- cursor-pointer"
-          >
+            className=" flex items-center justify-end  justify-items-end gap-x-2 gap-y- cursor-pointer">
             <span className="text-[#3F8EFC] justify-items-end text-md font-demibold">
               بازگشت
             </span>
