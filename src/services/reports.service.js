@@ -1,36 +1,97 @@
 import pool from "../config/db.js";
 import ApiError from "../utils/ApiError.js";
+import {ReportsFilter} from "../utils/apiFeature.js";
 
 const createReport = async (data) => {
     const newReport = await pool.query(`INSERT INTO reports
-                                            (id, state, title, text, file_name, teacher_id)
+                                            (id, status, title, text, file_name, teacher_id)
                                         values (gen_random_uuid(), $1, $2, $3, $4,
-                                                $5) returning *`, [data.state, data.title, data.text, data.file_name, data.teacher_id,]);
+                                                $5) returning *`, [data.status, data.title, data.text, data.file_name, data.teacher_id,]);
     return newReport.rows[0];
 };
-const getAllReport = async () => {
-    const reports = await pool.query(`SELECT *
-                                      FROM reports`);
+const getAllReport = async (queryData) => {
+    const {conditions, values} = ReportsFilter(queryData)
+    let query = `SELECT
+                     r.*,
+                     e.f_name,
+                     e.l_name,
+                     e.user_name,
+                     e.email,
+                     e.image
+                 FROM reports r
+                          JOIN employees e
+                               ON r.teacher_id = e.id`;
+    if (conditions.length > 0) {
+        query += ` WHERE ${conditions.join(" AND ")}`
+    }
+    const reports = await pool.query(query, values)
     return reports.rows;
 };
-const getReportById = async (id, userId, role) => {
-    const reports = await pool.query(`SELECT *
-                                      FROM reports
-                                      where id = $1`, [id]);
+const getReportById = async (id, employee) => {
+
+    const reports = await pool.query(`SELECT
+                                          r.id,
+                                          r.title,
+                                          r.status,
+                                          r.report_date,
+                                          r.teacher_id,
+                                          e.f_name,
+                                          e.l_name,
+                                          e.user_name,
+                                          r.file_name
+                                      FROM reports r
+                                               JOIN employees e
+                                                    ON r.teacher_id = e.id
+                                      WHERE r.id = $1
+                                      ORDER BY r.report_date DESC`, [id]);
 
     if (reports.rows.length === 0) {
         throw new ApiError(400, "Report not found");
     }
-    if (!(reports.rows.teacher_id === userId || role === "admin")) {
+    if (!(reports.rows[0].teacher_id === employee.id || employee.role === "admin")) {
         throw new ApiError(404, "Report not found or you are not allowed to get it");
     }
     return reports.rows;
 };
-const employeeReports = async (id, userId, role) => {
-    if (!(id === userId || role === "admin")) {
-        throw new ApiError(404, "Report not found or you are not allowed to get it");
+const employeeReports = async (id, employee, queryData) => {
+
+    if (!(id === employee.id || employee.role === "admin")) {
+        throw new ApiError(
+            403,
+            "You are not allowed to get these reports"
+        );
     }
-    const reports = await pool.query("SELECT * FROM reports where teacher_id = $1", [id]);
+
+    const { conditions, values } = ReportsFilter(queryData);
+
+    values.push(id);
+
+    let query = `
+        SELECT
+            r.id,
+            r.title,
+            r.status,
+            r.report_date,
+            r.teacher_id,
+            e.f_name,
+            e.l_name,
+            e.user_name,
+            e.image,
+            r.file_name
+        FROM reports r
+                 JOIN employees e
+                      ON r.teacher_id = e.id
+        WHERE r.teacher_id = $${values.length}
+    `;
+
+    if (conditions.length > 0) {
+        query += ` AND ${conditions.join(" AND ")}`;
+    }
+
+    query += ` ORDER BY r.report_date DESC`;
+
+    const reports = await pool.query(query, values);
+
     return reports.rows;
 };
 const updateReport = async (id, employee, data) => {
@@ -40,13 +101,13 @@ const updateReport = async (id, employee, data) => {
     }
     if (employee.role === "admin") {
         const newReport = await pool.query(`UPDATE reports
-                                            SET status   = $1,
-                                                admin_id = $2,
+                                            SET status     = $1,
+                                                admin_id   = $2,
                                                 updated_at = CURRENT_TIMESTAMP
                                             WHERE id = $3 RETURNING status`, [data.status, employee.id, id]);
         return newReport.rows[0];
     }
-    if (employee.userId === reports.rows.teacher_id) {
+    if (employee.id === reports.rows[0].teacher_id) {
         const allowedFields = ["title", "text", "file_name",];
 
         const fields = Object.keys(data);
@@ -80,8 +141,7 @@ const updateReport = async (id, employee, data) => {
 };
 const reportStats = async () => {
     const allReport = await pool.query(`SELECT COUNT(*) AS total_reports,
-                                               COUNT(*)    FILTER (WHERE status = 'pending') AS pending_reports, COUNT(*) FILTER (WHERE status = 'accept') AS accepted_reports, 
-                                               COUNT(*) FILTER (WHERE status = 'comment') AS comment_reports
+                                               COUNT(*)    FILTER (WHERE status = 'pending') AS pending_reports, COUNT(*) FILTER (WHERE status = 'accept') AS accepted_reports, COUNT(*) FILTER (WHERE status = 'comment') AS comment_reports
                                         FROM reports`);
     return allReport.rows;
 }
@@ -90,12 +150,12 @@ const employeeReportStats = async (id, employee) => {
         throw new ApiError(403, "Access denied");
     }
 
-    if (employee.role === "teacher" && employee.id !== teacherId) {
+    if (employee.role === "teacher" && employee.id !== id) {
         throw new ApiError(403, "Access denied");
     }
 
     const query = `
-        SELECT (SELECT COUNT(*)
+        SELECT (SELECT COUNT(*)  
                 FROM reports
                 WHERE teacher_id = $1)    AS "totalReports",
 
@@ -112,17 +172,17 @@ const employeeReportStats = async (id, employee) => {
                (SELECT COUNT(*)
                 FROM reports
                 WHERE teacher_id = $1
-                  AND status = 'comment') AS "commntedReports",
+                  AND status = 'comment') AS "commentedReports"
     `;
 
-    const {rows} = await pool.query(query, [teacherId]);
+    const {rows} = await pool.query(query, [id]);
 
     return {
-        teacherId,
+        teacherId: id,
         totalReports: Number(rows[0].totalReports),
         pendingReports: Number(rows[0].pendingReports),
         acceptedReports: Number(rows[0].acceptedReports),
-        commentedReports: Number(rows[0].totalComments),
+        commentedReports: Number(rows[0].commentedReports)
     };
 };
 const deleteReport = async (id, employee) => {

@@ -20,19 +20,21 @@ const createReportController = catchAsyncError(async (req, res) => {
     });
 });
 const getAllReportController = catchAsyncError(async (req, res) => {
-    const reports = await getAllReport();
+    const queryData = req.query;
+    const reports = await getAllReport(queryData);
     res.status(200).json({
         success: true, statusCode: 200, message: reports
     })
 });
 const getReportByIdController = catchAsyncError(async (req, res) => {
-    const report = await getReportById(req.params.id);
+    const report = await getReportById(req.params.id, req.employee);
     res.status(200).json({
         success: true, statusCode: 200, message: report
     });
 });
 const employeeReportsController = catchAsyncError(async (req, res) => {
-    const employeeReport = await employeeReports(req.params.teacherId, req.employee.id, req.employee.role);
+    const queryData = req.query;
+    const employeeReport = await employeeReports(req.params.teacherId, req.employee, queryData);
     res.status(200).json({
         success: true, statusCode: 200, message: employeeReport
     })
