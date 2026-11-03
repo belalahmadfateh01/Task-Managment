@@ -1,6 +1,6 @@
 export default function StepProgress() {
   return (
-    <div dir="rtl" className="w-full max-w-2xl">
+    <div dir="rtl" className="w-full max-w-2xl ">
       <p className="mb-5 text-right text-md text-gray-500">
         برای ادامه، نام کاربری و رمز عبور خود را ایجاد کنید
       </p>

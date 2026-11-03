@@ -2,8 +2,13 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Start from "./auth/startpage/Start";
 import "./globals.css";
+<<<<<<< HEAD
 // import { LoginPage } from "../components/LoginPage/page";
 // import { Header } from "../components/Header/page";
+=======
+import { LoginPage } from "../components/LoginPage/page";
+// import  Dashboard  from "../app/Dashboard";
+>>>>>>> 1af3774 (Main dashboard)
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -30,9 +35,14 @@ export default function RootLayout() {
   return (
     <html lang="fa" dir="rtl">
       <body className={dana.className}>
+<<<<<<< HEAD
         {/* <LoginPage /> */}
         <Start />
         {/* <Header /> */}
+=======
+        <LoginPage />
+        {/* <Dashboard /> */}
+>>>>>>> 1af3774 (Main dashboard)
       </body>
     </html>
   );
