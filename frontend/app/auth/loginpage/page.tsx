@@ -3,10 +3,16 @@ import StepProgress from "../../../components/StepProgress/page";
 import Link from "next/dist/client/link";
 export function LoginPage() {
   return (
-    <section className="flex w-full h-screen ">
+    <section className="flex w-full h-screen">
+  
       <div
         className="bg-[#3F8EFC]
+<<<<<<< HEAD:frontend/app/auth/loginpage/page.tsx
  w-1/2 px-20 py-30 flex justify-center items-center">
+=======
+ w-1/2 px-20 py-30 flex justify-center items-center rounded-l-2xl"
+      >
+>>>>>>> 1af3774 (Main dashboard):frontend/components/LoginPage/page.tsx
         <div className=" text-right bg-white grid grid-col-1 gap-x-10  h-170 w-130 px-6 py-2 rounded-2xl pb-10">
           <Link
             href="/"
