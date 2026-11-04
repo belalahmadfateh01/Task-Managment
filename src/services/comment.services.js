@@ -2,19 +2,19 @@ import pool from "../config/db.js";
 import ApiError from "../utils/ApiError.js";
 import {updateReport} from "../services/reports.service.js";
 
-const createComment = async (reqportId, employee, data) => {
-    const newComment = await pool.query(`insert into comments
+const createComment = async (reportId, employee, data) => {
+    const {rows} = await pool.query(`insert into comments
                                              (id, text, report_id, admin_id)
                                          values (gen_random_uuid(), $1, $2,
-                                                 $3) returning *`, [data.text, reqportId, employee.id]);
-    await updateReport(reqportId, employee, {status: "comment"});
-    return newComment.rows;
+                                                 $3) returning *`, [data.text, reportId, employee.id]);
+    await updateReport(reportId, employee, {status: "comment"});
+    return rows;
 
 };
 const getAllComments = async () => {
-    const comments = await pool.query(`SELECT *
+    const {rows} = await pool.query(`SELECT *
                                        FROM comments`);
-    return comments.rows;
+    return rows;
 };
 const getReportComments = async (reportId, employee) => {
     const {rows} = await pool.query(`SELECT * FROM reports WHERE id = $1`,[reportId]);
@@ -30,7 +30,7 @@ const updateComment = async (id, data) => {
     if (isExist.rows.length === 0) {
         throw new ApiError(404, "comment not found")
     }
-    const result = await pool.query(
+    const {rows} = await pool.query(
         `UPDATE comments
    SET text = $1,
        updated_at = CURRENT_TIMESTAMP
@@ -38,7 +38,7 @@ const updateComment = async (id, data) => {
    RETURNING *`,
         [data.text, id]
     );
-    return result.rows;
+    return rows;
 };
 const deleteComment = async (id) => {
     const isExist = await pool.query("SELECT * FROM comments WHERE id = $1", [id]);
@@ -46,7 +46,7 @@ const deleteComment = async (id) => {
         throw new ApiError(404, "comment not found")
     }
 
-    const reuslt = await pool.query("DELETE FROM comments WHERE id = $1", [id]);
+    await pool.query("DELETE FROM comments WHERE id = $1", [id]);
 
     return "Comment deleted successfully";
 }
