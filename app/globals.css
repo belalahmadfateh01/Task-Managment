@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-dana), ui-sans-serif, system-ui, sans-serif;
+  --color-brand: #3b82f6;
+  --color-brand-deep: #2563eb;
+  --color-surface: #f1f5f9;
+  --color-line: #e2e8f0;
+  /* narrow-laptop breakpoint: `lap:` (>=1100px) / `max-lap:` (<1100px) */
+  --breakpoint-lap: 1100px;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-slate-900 antialiased;
+    font-size: clamp(13px, 0.9vw, 15px);
+  }
+  button {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-deep);
+    outline-offset: 2px;
+  }
+}
