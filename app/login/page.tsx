@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,8 +19,7 @@ export default function LoginPage() {
         <div className="grid w-full max-w-[505px] grid-cols-1 gap-5 rounded-3xl bg-white p-6 pb-8 text-right shadow-xl md:p-8 ">
           <Link
             href="/"
-            className="flex cursor-pointer items-center justify-end gap-x-2"
-          >
+            className="flex cursor-pointer items-center justify-end gap-x-2">
             <span className="text-xs font-semibold text-[#3F8EFC]">بازگشت</span>
             <Image src="/imges/Vector.svg" alt="" width={12} height={12} />
           </Link>
@@ -40,8 +40,7 @@ export default function LoginPage() {
             onSubmit={(event) => {
               event.preventDefault();
               router.push("/dashboard");
-            }}
-          >
+            }}>
             <div className="grid grid-cols-1 gap-2">
               <label className="px-1 text-lg font-semibold" htmlFor="username">
                 نام کاربری
@@ -54,10 +53,14 @@ export default function LoginPage() {
                 type="text"
                 autoComplete="username"
                 required
-                onInvalid={(e) =>
-                  e.target.setCustomValidity("لطفاً نام خود را وارد کنید")
+                onInvalid={(e: FormEvent<HTMLInputElement>) =>
+                  e.currentTarget.setCustomValidity(
+                    "لطفاً نام خود را وارد کنید",
+                  )
                 }
-                onInput={(e) => e.target.setCustomValidity("")}
+                onInput={(e: FormEvent<HTMLInputElement>) =>
+                  e.currentTarget.setCustomValidity("")
+                }
               />
             </div>
             <div className="grid grid-cols-1 gap-2">
@@ -72,16 +75,17 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="new-password"
                 required
-                onInvalid={(e) =>
-                  e.target.setCustomValidity("رمز عبور الزامی است")
+                onInvalid={(e: FormEvent<HTMLInputElement>) =>
+                  e.currentTarget.setCustomValidity("رمز عبور الزامی است")
                 }
-                onInput={(e) => e.target.setCustomValidity("")}
+                onInput={(e: FormEvent<HTMLInputElement>) =>
+                  e.currentTarget.setCustomValidity("")
+                }
               />
             </div>
             <button
               className="mt-2 h-[50px] cursor-pointer rounded-xl bg-[#3F8EFC] text-center text-lg font-bold text-white transition hover:bg-blue-600"
-              type="submit"
-            >
+              type="submit">
               ورود
             </button>
           </form>

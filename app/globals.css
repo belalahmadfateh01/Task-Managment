@@ -11,13 +11,29 @@
 }
 
 @layer base {
+  html {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overflow-x: hidden;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   body {
     @apply bg-surface text-slate-900 antialiased;
     font-size: clamp(13px, 0.9vw, 15px);
+    overflow-x: hidden;
   }
+
   button {
     cursor: pointer;
   }
+
   :focus-visible {
     outline: 2px solid var(--color-brand-deep);
     outline-offset: 2px;
