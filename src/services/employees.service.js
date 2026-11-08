@@ -2,106 +2,74 @@ import pool from "../config/db.js";
 import ApiError from "../utils/ApiError.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { Pagination } from "../utils/apiFeature.js";
+
+const publicEmployee = ({ password, ...employee }) => employee;
 
 const registertion = async (data) => {
-    const {rows} = await pool.query(`select *
-                                       from employees
-                                       where email = $1`, [data.email]);
-    if (rows.length > 0) {
-        throw new ApiError(409, "Teacher already exists");
-    }
-
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-
-    const newEmployee = await pool.query(`insert into employees
-                                              (id, f_name, l_name, user_name, email, password, role, phone, image)
-                                          values (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7,
-                                                  $8) returning *`, [data.f_name, data.l_name, data.user_name, data.email, hashedPassword, data.role, data.phone, data.image])
-    const newEmployeeObject = newEmployee.rows[0];
-    delete newEmployeeObject.password;
-    return newEmployeeObject;
+    const hashedPassword = await bcrypt.hash(data.password, 12);
+    const { rows } = await pool.query(
+        `INSERT INTO employees (id, f_name, l_name, user_name, email, password, role, phone, image)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [data.f_name, data.l_name, data.user_name, data.email, hashedPassword, data.role, data.phone ?? null, data.image ?? null]
+    );
+    return publicEmployee(rows[0]);
 };
+
 const login = async (data) => {
-    const {rows} = await pool.query(`SELECT *
-                                       FROM employees
-                                       WHERE email = $1`, [data.email]);
-    if (rows.length === 0) {
-        throw new ApiError(401, "Email or Password is incorrect");
-    }
+    const { rows } = await pool.query("SELECT * FROM employees WHERE email = $1", [data.email]);
     const employee = rows[0];
-    const isPasswordCorrect = await bcrypt.compare(data.password, employee1.password)
-    if (!isPasswordCorrect) {
+    if (!employee || !(await bcrypt.compare(data.password, employee.password))) {
         throw new ApiError(401, "Email or Password is incorrect");
     }
-    const token = jwt.sign({
-        id: employee.id, role: employee.role
-    }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRE
+    if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is not configured");
+    const token = jwt.sign({ id: employee.id, role: employee.role }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRE || "1d"
     });
     return token;
+};
 
-}
 const updateEmployee = async (id, userId, role, data) => {
-    if (!(id === userId)) {
-        throw new ApiError(404, "Record not found or you are not allowed to update it");
+    if (id !== userId && role !== "admin") {
+        throw new ApiError(403, "You are not allowed to update this employee");
     }
-    let {rows} = await pool.query("select * from employees where id = $1", [id]);
     const allowedFields = ["f_name", "l_name", "user_name", "email", "phone"];
-
     const fields = Object.keys(data);
-
-    if (fields.length === 0) {
-        throw new Error("No fields provided for update");
-    }
-
-    const invalidFields = fields.filter(field => !allowedFields.includes(field));
-
-    if (invalidFields.length > 0) {
-        throw new Error("Invalid fields provided");
-    }
-
-    const values = Object.values(data);
-
-    const setClause = fields
-        .map((field, index) => `${field} = $${index + 1}`)
-        .join(", ");
-
-    const query = `
-        UPDATE employees
-        SET ${setClause}
-        WHERE id = $${values.length + 1} RETURNING id, f_name, l_name, user_name, email, phone
-    `;
-
-    const employee = await pool.query(query, [...values, id]);
-
-    return employee.rows[0];
-};
-const deleteEmployee = async (id, userId, role) => {
-    if (!(id === userId || role === "admin")) {
-        throw new ApiError(404, "Record not found or you are not allowed to delete it");
-    }
-
-    const {rows} = await pool.query("DELETE FROM employees WHERE id = $1 RETURNING *", [id]);
-    const newResult = Object(rows[0]);
-    delete newResult.password;
+    if (fields.length === 0) throw new ApiError(400, "No fields provided for update");
+    if (fields.some(field => !allowedFields.includes(field))) throw new ApiError(400, "Invalid fields provided");
+    const values = fields.map(field => data[field]);
+    const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(", ");
+    const { rows } = await pool.query(
+        `UPDATE employees SET ${setClause} WHERE id = $${values.length + 1} RETURNING id, f_name, l_name, user_name, email, phone, role, image`,
+        [...values, id]
+    );
+    if (!rows[0]) throw new ApiError(404, "Employee not found");
     return rows[0];
-}
-const getEmployee = async (id, userId, role) => {
-    if (!(id === userId || role === "admin")) {
-        throw new ApiError(404, "Record not found or you are not allowed to delete it");
-    }
-    const employee = await pool.query("SELECT * FROM employees WHERE id = $1", [id]);
-    const employeeObject = Object(employee.rows[0]);
-    delete employeeObject.password;
-    return employeeObject;
 };
-const getAllEmployee = async () => {
-    const {rows} = await pool.query("select * from employees");
-    const employeesObject = Object(rows);
-    employeesObject.forEach(employee => {
-        delete employee.password
-    })
-    return employeesObject;
-}
 
-export {registertion, login, updateEmployee, deleteEmployee, getEmployee, getAllEmployee};
+const deleteEmployee = async (id, userId, role) => {
+    if (id !== userId && role !== "admin") throw new ApiError(403, "You are not allowed to delete this employee");
+    const { rows } = await pool.query("DELETE FROM employees WHERE id = $1 RETURNING id, f_name, l_name, user_name, email, role", [id]);
+    if (!rows[0]) throw new ApiError(404, "Employee not found");
+    return rows[0];
+};
+
+const getEmployee = async (id, userId, role) => {
+    if (id !== userId && role !== "admin") throw new ApiError(403, "You are not allowed to view this employee");
+    const { rows } = await pool.query("SELECT id, f_name, l_name, user_name, email, phone, role, image FROM employees WHERE id = $1", [id]);
+    if (!rows[0]) throw new ApiError(404, "Employee not found");
+    return rows[0];
+};
+
+const getAllEmployee = async queryData => {
+    const { limit, offset } = Pagination(queryData);
+    const { rows } = await pool.query(
+        `SELECT id, f_name, l_name, user_name, email, phone, role, image
+         FROM employees ORDER BY f_name, l_name LIMIT $1 OFFSET $2`,
+        [limit, offset]
+    );
+    return rows;
+};
+
+export { registertion, login, updateEmployee, deleteEmployee, getEmployee, getAllEmployee };

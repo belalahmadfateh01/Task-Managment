@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import ApiError from "../utils/ApiError.js";
+import { Pagination } from "../utils/apiFeature.js";
 
 const taskSelect = `
     SELECT t.id, t.title, t.description, t.deadline, t.created_by, t.created_at, t.file_name,
@@ -23,10 +24,10 @@ const taskSelect = `
     LEFT JOIN employees teacher ON teacher.id = a.teacher_id`;
 
 const createTask = async (adminId, data) => {
-    const teacherIds = [...new Set(data.teacher_ids)];
-    if (!Array.isArray(data.teacher_ids) || teacherIds.length === 0) {
+    if (!Array.isArray(data.teacher_ids) || data.teacher_ids.length === 0) {
         throw new ApiError(400, "teacher_ids must contain at least one teacher id");
     }
+    const teacherIds = [...new Set(data.teacher_ids)];
     if (teacherIds.some(id => typeof id !== "string" || !id.trim())) {
         throw new ApiError(400, "Every teacher id must be a non-empty string");
     }
@@ -56,21 +57,23 @@ const createTask = async (adminId, data) => {
         await client.query("COMMIT");
         return task;
     } catch (error) {
-        await client.query("ROLLBACK");
+        await client.query("ROLLBACK").catch(() => {});
         throw error;
     } finally {
         client.release();
     }
 };
 
-const getTasks = async (employee) => {
+const getTasks = async (employee, queryData) => {
+    const { limit, offset } = Pagination(queryData);
     let query = `${taskSelect}`;
     const values = [];
     if (employee.role === "teacher") {
         query += " WHERE a.teacher_id = $1";
         values.push(employee.id);
     }
-    query += " GROUP BY t.id, creator.f_name, creator.l_name ORDER BY t.created_at DESC";
+    values.push(limit, offset);
+    query += ` GROUP BY t.id, creator.f_name, creator.l_name ORDER BY t.created_at DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
     const { rows } = await pool.query(query, values);
     if (employee.role === "teacher") {
         return rows.map(task => ({

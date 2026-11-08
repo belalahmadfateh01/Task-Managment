@@ -14,6 +14,7 @@ const registertionController = catchAsyncError(async (req, res) => {
 
     res.status(201).json({
         success: true,
+        statusCode:201,
         message: employee
     })
 });
@@ -21,6 +22,7 @@ const loginController = catchAsyncError(async (req, res) => {
     const token = await login(req.body);
     res.status(200).json({
         success: true,
+        statusCode:200,
         message: "login successful",
         token
     })
@@ -29,16 +31,15 @@ const updateEmployeeController = catchAsyncError(async (req, res) => {
     const employee = await updateEmployee(req.params.id, req.employee.id, req.employee.role, req.body);
     res.status(200).json({
         success: true,
-        status: 200,
+        statusCode: 200,
         message: employee
     })
 });
 const deleteEmployeeController = catchAsyncError(async (req, res) => {
-    console.log(req.params, req.employee.id, req.employee.role);
     const employee = await deleteEmployee(req.params.id, req.employee.id, req.employee.role);
     res.status(200).json({
         success: true,
-        status: 200,
+        statusCode: 200,
         message: employee
     })
 });
@@ -47,15 +48,15 @@ const getEmployeeController = catchAsyncError(async (req, res) => {
 
     res.status(200).json({
         success: true,
-        status: 200,
+        statusCode: 200,
         message: employee
     })
 })
 const getAllEmployeeController = catchAsyncError(async (req, res) => {
-    const allEmployee = await getAllEmployee();
+    const allEmployee = await getAllEmployee(req.query);
     res.status(200).json({
         success: true,
-        status: 200,
+        statusCode: 200,
         message: allEmployee
     });
 });
