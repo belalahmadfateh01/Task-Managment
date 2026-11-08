@@ -9,7 +9,7 @@ const createTaskController = catchAsyncError(async (req, res) => {
 });
 
 const getTasksController = catchAsyncError(async (req, res) => {
-    const tasks = await getTasks(req.employee);
+    const tasks = await getTasks(req.employee, req.query);
     res.status(200).json({ success: true, statusCode: 200, message: tasks });
 });
 

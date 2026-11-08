@@ -1,16 +1,17 @@
 import pool from "../config/db.js";
 import ApiError from "../utils/ApiError.js";
-import {ReportsFilter} from "../utils/apiFeature.js";
+import {ReportsFilter, Pagination} from "../utils/apiFeature.js";
 
 const createReport = async (data) => {
     const {rows} = await pool.query(`INSERT INTO reports
                                          (id, status, title, text, file_name, teacher_id)
                                      values (gen_random_uuid(), $1, $2, $3, $4,
-                                             $5) returning *`, [data.status, data.title, data.text, data.file_name, data.teacher_id,]);
+                                             $5) returning *`, ["pending", data.title, data.text, data.file_name ?? null, data.teacher_id]);
     return rows[0];
 };
 const getAllReport = async (queryData) => {
     const {conditions, values} = ReportsFilter(queryData)
+    const {limit, offset} = Pagination(queryData);
     let query = `SELECT r.*,
                         e.f_name,
                         e.l_name,
@@ -23,6 +24,8 @@ const getAllReport = async (queryData) => {
     if (conditions.length > 0) {
         query += ` WHERE ${conditions.join(" AND ")}`
     }
+    values.push(limit, offset);
+    query += ` ORDER BY r.report_date DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
     const {rows} = await pool.query(query, values)
     return rows;
 };
@@ -43,9 +46,7 @@ const getReportById = async (id, employee) => {
                                       WHERE r.id = $1
                                       ORDER BY r.report_date DESC`, [id]);
 
-    if (rows.length === 0) {
-        throw new ApiError(400, "Report not found");
-    }
+    if (rows.length === 0) throw new ApiError(404, "Report not found");
     if (!(rows[0].teacher_id === employee.id || employee.role === "admin")) {
         throw new ApiError(404, "Report not found or you are not allowed to get it");
     }
@@ -58,6 +59,7 @@ const employeeReports = async (id, employee, queryData) => {
     }
 
     const {conditions, values} = ReportsFilter(queryData);
+    const {limit, offset} = Pagination(queryData);
 
     values.push(id);
 
@@ -82,7 +84,8 @@ const employeeReports = async (id, employee, queryData) => {
         query += ` AND ${conditions.join(" AND ")}`;
     }
 
-    query += ` ORDER BY r.report_date DESC`;
+    values.push(limit, offset);
+    query += ` ORDER BY r.report_date DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
 
     const {rows} = await pool.query(query, values);
 
@@ -94,6 +97,9 @@ const updateReport = async (id, employee, data) => {
         throw new ApiError(404, "Report not found or you are not allowed to get it");
     }
     if (employee.role === "admin") {
+        if (Object.keys(data).length !== 1 || !["pending", "accept", "comment"].includes(data.status)) {
+            throw new ApiError(400, "Admin must provide a valid report status");
+        }
         const {rows} = await pool.query(`UPDATE reports
                                             SET status     = $1,
                                                 admin_id   = $2,
@@ -132,6 +138,7 @@ const updateReport = async (id, employee, data) => {
 
         return rows[0];
     }
+    throw new ApiError(403, "You are not allowed to update this report");
 };
 const reportStats = async () => {
     const {rows} = await pool.query(`SELECT COUNT(*) AS total_reports,

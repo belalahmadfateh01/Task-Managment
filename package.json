@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node --env-file=.env src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "db:migrate": "node --env-file=.env src/db/migrate.js",
+    "admin:create": "node --env-file=.env src/db/create-admin.js",
+    "test": "node --test-reporter=spec test/backend-utils.test.js"
   },
   "repository": {
     "type": "git",

@@ -1,8 +1,9 @@
 const globalErrorHandler = (err, req, res, next) => {
+    if (res.headersSent) return next(err);
     let statusCode = err.statusCode || 500;
-    let message = err.message || "Internal Server Error";
+    let message = statusCode < 500 ? (err.message || "Request failed") : "Internal Server Error";
     if (statusCode === 500) {
-        console.log(err)
+        console.error(err);
     }
 
     switch (err.code) {
@@ -24,6 +25,11 @@ const globalErrorHandler = (err, req, res, next) => {
         case "22P02":
             statusCode = 400;
             message = "Invalid data format";
+            break;
+
+        case "57014":
+            statusCode = 503;
+            message = "Database query timed out; please retry";
             break;
     }
 

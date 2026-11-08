@@ -93,4 +93,13 @@ const ReportsFilter = (queryData) => {
     return { conditions, values };
 };
 
-export { ReportsFilter };
+const Pagination = (queryData) => {
+    const limit = Number(queryData.limit ?? 25);
+    const page = Number(queryData.page ?? 1);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(page) || page < 1) {
+        throw new ApiError(400, "page must be a positive integer and limit must be between 1 and 100");
+    }
+    return { limit, offset: (page - 1) * limit };
+};
+
+export { ReportsFilter, Pagination };
