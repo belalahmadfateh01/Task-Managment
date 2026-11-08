@@ -1,6 +1,12 @@
 "use client";
 
-import { Archive, ArchiveRestore, Check, MessageSquareText, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Check,
+  MessageSquareText,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createMockReports } from "@/lib/data";
 import { toInputDate } from "@/lib/jalali";
@@ -9,9 +15,7 @@ import { getRange, inRange } from "@/lib/period";
 import type { CustomRange, PeriodKey, Report, Status } from "@/lib/types";
 import Dialog from "./Dialog";
 import DonutCard from "./DonutCard";
-import Header from "./Header";
 import ReportsTable from "./ReportsTable";
-import Sidebar from "./Sidebar";
 import StatCards from "./StatCards";
 
 interface MenuState {
@@ -49,12 +53,23 @@ export default function Dashboard() {
     setReports(createMockReports(n));
   }, []);
 
-  const range = useMemo(() => (now ? getRange(period, now, custom) : null), [now, period, custom]);
+  const range = useMemo(
+    () => (now ? getRange(period, now, custom) : null),
+    [now, period, custom],
+  );
 
-  const inPeriod = useMemo(() => (range ? reports.filter((r) => inRange(r, range)) : []), [reports, range]);
+  const inPeriod = useMemo(
+    () => (range ? reports.filter((r) => inRange(r, range)) : []),
+    [reports, range],
+  );
 
   const counts = useMemo(() => {
-    const c: Record<Status, number> = { received: 0, feedback: 0, approved: 0, pending: 0 };
+    const c: Record<Status, number> = {
+      received: 0,
+      feedback: 0,
+      approved: 0,
+      pending: 0,
+    };
     for (const r of inPeriod) c[r.status]++;
     return c;
   }, [inPeriod]);
@@ -92,66 +107,68 @@ export default function Dashboard() {
     const b = button.getBoundingClientRect();
     const left = Math.min(Math.max(8, b.left), window.innerWidth - MENU_W - 8);
     const below = b.bottom + 6;
-    const top = below + 190 > window.innerHeight ? Math.max(8, b.top - 190 - 6) : below;
+    const top =
+      below + 190 > window.innerHeight ? Math.max(8, b.top - 190 - 6) : below;
     setMenu({ id: report.id, top, left });
   };
 
   const menuReport = menu ? reports.find((r) => r.id === menu.id) : undefined;
-  const dialogReport = dialog ? reports.find((r) => r.id === dialog.id) : undefined;
+  const dialogReport = dialog
+    ? reports.find((r) => r.id === dialog.id)
+    : undefined;
 
-  const approve = (id: string) => patch(id, (r) => ({ ...r, status: "approved" }));
-  const toggleArchive = (r: Report) => patch(r.id, (x) => ({ ...x, archived: !x.archived }));
+  const approve = (id: string) =>
+    patch(id, (r) => ({ ...r, status: "approved" }));
+  const toggleArchive = (r: Report) =>
+    patch(r.id, (x) => ({ ...x, archived: !x.archived }));
 
   if (!now || !range) {
-    return (
-      <div className="grid min-h-screen grid-cols-[76px_minmax(0,1fr)] xl:grid-cols-[clamp(210px,15vw,270px)_minmax(0,1fr)]">
-        <Sidebar />
-        <main className="flex min-w-0 flex-col gap-(--gap) px-(--gap) pb-(--gap) [--gap:clamp(14px,1.5vw,24px)]">
-          <Header />
-          <p className="text-slate-500">در حال بارگذاری…</p>
-        </main>
-      </div>
-    );
+    return <p className="text-slate-500">در حال بارگذاری…</p>;
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-[76px_minmax(0,1fr)] xl:grid-cols-[clamp(210px,15vw,270px)_minmax(0,1fr)]">
-      <Sidebar />
-      <main className="flex min-w-0 flex-col gap-(--gap) px-(--gap) pb-(--gap) [--gap:clamp(14px,1.5vw,24px)]">
-        <Header />
-        <StatCards approved={counts.approved} total={total} pending={counts.pending} feedback={counts.feedback} />
+    <>
+      <StatCards
+        approved={counts.approved}
+        total={total}
+        pending={counts.pending}
+        feedback={counts.feedback}
+      />
 
-        <div className="grid grid-cols-1 items-start gap-(--gap) lap:grid-cols-[minmax(0,1fr)_clamp(300px,27vw,410px)]">
-          <ReportsTable
-            rows={rows}
-            totalRows={viewRows.length}
-            view={view}
-            onView={(v) => {
-              setView(v);
-              setShowAll(false);
-            }}
-            archivedCount={archivedCount}
-            showAll={showAll}
-            onToggleAll={() => setShowAll((s) => !s)}
-            showDate={period !== "daily"}
-            onOpenMenu={openMenu}
-          />
-          <DonutCard
-            period={period}
-            onPeriod={(p) => {
-              setPeriod(p);
-              setShowAll(false);
-            }}
-            custom={custom}
-            onCustom={setCustom}
-            range={range}
-            counts={counts}
-          />
-        </div>
-      </main>
+      <div className="mt-(--gap) grid grid-cols-1 items-start gap-(--gap) lap:grid-cols-[minmax(0,1fr)_clamp(300px,27vw,410px)]">
+        <ReportsTable
+          rows={rows}
+          totalRows={viewRows.length}
+          view={view}
+          onView={(v) => {
+            setView(v);
+            setShowAll(false);
+          }}
+          archivedCount={archivedCount}
+          showAll={showAll}
+          onToggleAll={() => setShowAll((s) => !s)}
+          showDate={period !== "daily"}
+          onOpenMenu={openMenu}
+        />
+        <DonutCard
+          period={period}
+          onPeriod={(p) => {
+            setPeriod(p);
+            setShowAll(false);
+          }}
+          custom={custom}
+          onCustom={setCustom}
+          range={range}
+          counts={counts}
+        />
+      </div>
 
       {menu && menuReport && (
-        <div ref={menuRef} className="fixed z-50 flex flex-col rounded-xl border border-line bg-white p-1.5 shadow-xl" role="menu" style={{ top: menu.top, left: menu.left, width: MENU_W }}>
+        <div
+          ref={menuRef}
+          className="fixed z-50 flex flex-col rounded-xl border border-line bg-white p-1.5 shadow-xl"
+          role="menu"
+          style={{ top: menu.top, left: menu.left, width: MENU_W }}>
           {menuReport.status !== "approved" && (
             <button
               role="menuitem"
@@ -159,8 +176,7 @@ export default function Dashboard() {
               onClick={() => {
                 approve(menuReport.id);
                 setMenu(null);
-              }}
-            >
+              }}>
               <Check size={16} /> تائید
             </button>
           )}
@@ -171,8 +187,7 @@ export default function Dashboard() {
               setNote(menuReport.note ?? "");
               setDialog({ kind: "feedback", id: menuReport.id });
               setMenu(null);
-            }}
-          >
+            }}>
             <MessageSquareText size={16} /> بازخورد
           </button>
           <button
@@ -181,9 +196,12 @@ export default function Dashboard() {
             onClick={() => {
               toggleArchive(menuReport);
               setMenu(null);
-            }}
-          >
-            {menuReport.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+            }}>
+            {menuReport.archived ? (
+              <ArchiveRestore size={16} />
+            ) : (
+              <Archive size={16} />
+            )}
             {menuReport.archived ? "خروج از بایگانی" : "بایگانی"}
           </button>
           <button
@@ -192,8 +210,7 @@ export default function Dashboard() {
             onClick={() => {
               setDialog({ kind: "delete", id: menuReport.id });
               setMenu(null);
-            }}
-          >
+            }}>
             <Trash2 size={16} /> حذف
           </button>
         </div>
@@ -206,10 +223,13 @@ export default function Dashboard() {
           confirmLabel="ثبت بازخورد"
           onClose={() => setDialog(null)}
           onConfirm={() => {
-            patch(dialogReport.id, (r) => ({ ...r, status: "feedback", note: note.trim() || undefined }));
+            patch(dialogReport.id, (r) => ({
+              ...r,
+              status: "feedback",
+              note: note.trim() || undefined,
+            }));
             setDialog(null);
-          }}
-        >
+          }}>
           <textarea
             className="w-full resize-y rounded-[10px] border border-line bg-white px-3 py-2.5"
             rows={4}
@@ -234,6 +254,6 @@ export default function Dashboard() {
           }}
         />
       )}
-    </div>
+    </>
   );
 }
