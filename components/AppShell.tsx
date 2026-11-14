@@ -38,6 +38,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     title: "صفحه",
     description: "نمایش محتوای صفحه",
   };
+  const isInboxReportPage = pathname.startsWith("/inbox/");
 
   return (
     <div
@@ -49,11 +50,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex min-w-0 flex-col overflow-hidden">
-          <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm">
-            <Header title={meta.title} description={meta.description} />
-          </div>
+          {!isInboxReportPage && (
+            <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm">
+              <Header title={meta.title} description={meta.description} />
+            </div>
+          )}
 
-          <main className="flex-1 overflow-y-auto px-(--gap) pb-(--gap) [--gap:clamp(14px,1.5vw,24px)]">
+          <main
+            className={`flex-1 px-(--gap) pb-(--gap) [--gap:clamp(14px,1.5vw,24px)] ${
+              isInboxReportPage ? "min-h-0 overflow-hidden" : "overflow-y-auto"
+            }`}>
             {children}
           </main>
         </div>
