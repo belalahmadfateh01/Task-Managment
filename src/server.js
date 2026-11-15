@@ -9,13 +9,20 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 try {
     await pool.query("SELECT 1");
     const server = app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
-    const shutdown = async signal => {
-        console.log(`${signal} received; closing server`);
-        server.close(async () => {
-            await pool.end();
-            process.exit(0);
-        });
-    };
+    let isShuttingDown = false;
+
+const shutdown = async signal => {
+    if (isShuttingDown) return;
+
+    isShuttingDown = true;
+
+    console.log(`${signal} received; closing server`);
+
+    server.close(async () => {
+        await pool.end();
+        process.exit(0);
+    });
+};
     process.on("SIGTERM", () => shutdown("SIGTERM"));
     process.on("SIGINT", () => shutdown("SIGINT"));
 } catch (error) {
