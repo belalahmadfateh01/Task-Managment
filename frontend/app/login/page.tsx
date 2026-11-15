@@ -1,10 +1,11 @@
 "use client";
+import { loginEmployee } from "@/services/employee.service";
 
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { readEmployees, writeSession } from "@/lib/clientStore";
+import { writeSession } from "@/lib/clientStore";
 
 const input =
   "h-[50px] w-full rounded-xl border border-gray-300 px-4 text-right text-sm placeholder:text-gray-400 focus:border-[#3F8EFC] focus:outline-none";
@@ -12,6 +13,7 @@ const input =
 export default function LoginPage() {
   const router = useRouter();
   const [loginError, setLoginError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   return (
     <section className="flex h-screen w-full">
@@ -36,30 +38,29 @@ export default function LoginPage() {
 
           <form
             className="grid grid-cols-1 gap-6"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
+              setLoading(true);
+              setLoginError("");
               const formData = new FormData(event.currentTarget);
               const email = String(formData.get("email") ?? "")
                 .trim()
                 .toLowerCase();
               const password = String(formData.get("password") ?? "");
-              const employee = readEmployees().find(
-                (item) => item.email.toLowerCase() === email,
-              );
-
-              if (employee && employee.password !== password) {
-                setLoginError("ایمیل یا رمز عبور نادرست است.");
-                return;
+              try {
+                const result = await loginEmployee<{ employee: { id: string; role: "admin" | "teacher" } }>("/employee/login", {
+                  method: "POST",
+                  body: JSON.stringify({ email, password }),
+                });
+                const { employee } = result;
+                if (!employee?.id || !["admin", "teacher"].includes(employee.role)) throw new Error("پاسخ ورود معتبر نیست.");
+                writeSession({ role: employee.role, employeeId: employee.id });
+                router.push(employee.role === "admin" ? "/dashboard" : "/employee/dashboard");
+              } catch (error) {
+                setLoginError(error instanceof Error ? error.message : "ورود ناموفق بود.");
+              } finally {
+                setLoading(false);
               }
-
-              if (employee) {
-                writeSession({ role: "employee", employeeId: employee.id });
-                router.push("/employee/dashboard");
-                return;
-              }
-
-              writeSession({ role: "admin" });
-              router.push("/dashboard");
             }}>
             <div className="grid grid-cols-1 gap-2">
               <label className="px-1 text-lg font-semibold" htmlFor="email">
@@ -110,9 +111,10 @@ export default function LoginPage() {
               </p>
             )}
             <button
+              disabled={loading}
               className="mt-2 h-[50px] cursor-pointer rounded-xl bg-[#3F8EFC] text-center text-lg font-bold text-white transition hover:bg-blue-600"
               type="submit">
-              ورود
+              {loading ? "در حال ورود…" : "ورود"}
             </button>
           </form>
         </div>

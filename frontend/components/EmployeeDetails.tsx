@@ -2,32 +2,41 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Check,
   ChevronLeft,
   Clock3,
   Pencil,
-  UserRoundPen,
 } from "lucide-react";
-import { reports } from "@/lib/inbox";
+import { api } from "@/lib/api";
 import { formatJalali, fromInputDate } from "@/lib/jalali";
 import type { Employee } from "@/lib/types";
+import ProfileEditor, { type EditableEmployeeProfile } from "@/components/ProfileEditor";
 
 interface EmployeeDetailsProps {
   employee: Employee;
   onBack: () => void;
-  onAvatarChange: (avatar: string) => void;
+  onProfileUpdated: (profile: EditableEmployeeProfile) => void;
 }
 
 export default function EmployeeDetails({
   employee,
   onBack,
-  onAvatarChange,
+  onProfileUpdated,
 }: EmployeeDetailsProps) {
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [photoError, setPhotoError] = useState("");
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [reports, setReports] = useState<Array<{
+    id: string;
+    title: string;
+    status: string;
+    date: string;
+    time: string;
+  }>>([]);
+  const [reportsError, setReportsError] = useState("");
+  const [reportsLoading, setReportsLoading] = useState(true);
+
   const joined = fromInputDate(employee.joinedAt);
   const info = [
     ["نام و تخلص", employee.name],
@@ -35,38 +44,29 @@ export default function EmployeeDetails({
     ["شماره تلفن", employee.phone || "ثبت نشده"],
     ["آدرس", employee.address || "ثبت نشده"],
     ["تاریخ ثبت سیستم", joined ? formatJalali(joined, "/") : employee.joinedAt],
-    ["آخرین زمان ورود", "اطلاعاتی ثبت نشده"],
+    ["آخرین زمان ورود", employee.lastLoginAt ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "medium", timeStyle: "short" }).format(new Date(employee.lastLoginAt)) : "هنوز وارد نشده"],
   ];
 
-  const selectPhoto = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0];
-    if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setPhotoError("فرمت عکس باید JPG، PNG یا WEBP باشد.");
-      event.currentTarget.value = "";
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setPhotoError("حجم عکس نباید بیشتر از ۲ مگابایت باشد.");
-      event.currentTarget.value = "";
-      return;
-    }
-
-    const input = event.currentTarget;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        onAvatarChange(reader.result);
-        setPhotoError("");
-      }
-      input.value = "";
-    };
-    reader.onerror = () => {
-      setPhotoError("خواندن عکس ناموفق بود. دوباره تلاش کنید.");
-      input.value = "";
-    };
-    reader.readAsDataURL(file);
-  };
+  useEffect(() => {
+    setReportsLoading(true);
+    setReportsError("");
+    setReports([]);
+    api<Record<string, unknown>[]>(`/report/teacher/${employee.id}?limit=100`)
+      .then((rows) => setReports(rows
+        .filter((row) => row.status !== "draft")
+        .map((row) => {
+          const created = new Date(String(row.report_date ?? ""));
+          return {
+            id: String(row.id),
+            title: String(row.title ?? ""),
+            status: row.status === "accept" ? "تأیید شده" : row.status === "comment" ? "بازخورد داده شد" : "در انتظار بررسی",
+            date: new Intl.DateTimeFormat("fa-IR-u-ca-persian").format(created),
+            time: new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit" }).format(created),
+          };
+        })))
+      .catch((cause) => setReportsError(cause instanceof Error ? cause.message : "بارگذاری گزارش‌ها ناموفق بود."))
+      .finally(() => setReportsLoading(false));
+  }, [employee.id]);
 
   return (
     <div className="mx-auto w-full max-w-280">
@@ -106,8 +106,14 @@ export default function EmployeeDetails({
             <span />
           </div>
           <div className="mt-2 min-h-0 divide-y divide-slate-100 overflow-y-auto">
-            {reports.map((report) => {
-              const isRead = report.category === "خوانده شده";
+            {reportsError ? (
+              <p role="alert" className="py-8 text-center text-xs text-red-600">{reportsError}</p>
+            ) : reportsLoading ? (
+              <p className="py-8 text-center text-xs text-slate-500">در حال بارگذاری…</p>
+            ) : reports.length === 0 ? (
+              <p className="py-8 text-center text-xs text-slate-500">گزارشی برای این کارمند ثبت نشده است.</p>
+            ) : reports.map((report) => {
+              const isPending = report.status === "در انتظار بررسی";
               return (
                 <Link
                   key={report.id}
@@ -118,11 +124,11 @@ export default function EmployeeDetails({
                   </span>
                   <span
                     className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[9px] font-medium sm:px-3 sm:text-[10px] ${
-                      isRead
-                        ? "bg-indigo-50 text-indigo-700"
-                        : "bg-emerald-100 text-emerald-700"
+                      isPending
+                        ? "bg-amber-50 text-amber-700"
+                        : report.status === "تأیید شده" ? "bg-emerald-100 text-emerald-700" : "bg-indigo-50 text-indigo-700"
                     }`}>
-                    {report.category}
+                    {report.status}
                   </span>
                   <span
                     className="col-start-1 row-start-2 text-[9px] text-slate-500 sm:col-auto sm:row-auto sm:whitespace-nowrap sm:text-xs"
@@ -150,37 +156,24 @@ export default function EmployeeDetails({
               alt={`تصویر ${employee.name}`}
               fill
               sizes="144px"
-              unoptimized={employee.avatar.startsWith("data:")}
+              unoptimized
               className="rounded-lg border border-blue-300 object-cover"
             />
             <button
               type="button"
-              onClick={() => fileInput.current?.click()}
+              onClick={() => setProfileEditorOpen(true)}
               aria-label="تغییر تصویر پروفایل"
               title="تغییر تصویر پروفایل"
               className="absolute -bottom-2 -right-2 grid size-8 place-items-center rounded-full bg-brand text-white shadow-sm hover:bg-brand-deep">
               <Pencil size={15} />
             </button>
-            <input
-              ref={fileInput}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={selectPhoto}
-              className="hidden"
-              aria-label="انتخاب تصویر پروفایل"
-            />
           </div>
-          {photoError && (
-            <p role="alert" className="mb-3 text-center text-xs text-red-600">
-              {photoError}
-            </p>
-          )}
           <div className="mt-auto overflow-hidden rounded-lg border border-blue-500">
             <div className="flex items-center justify-between bg-blue-50 px-3 py-2.5">
               <h2 className="font-semibold text-slate-800">مشخصات کارمند</h2>
-              <span className="grid size-7 place-items-center rounded-full bg-blue-600 text-white">
-                <UserRoundPen size={15} />
-              </span>
+              <button type="button" onClick={() => setProfileEditorOpen(true)} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
+                <Pencil size={14} /> ویرایش پروفایل
+              </button>
             </div>
             <dl>
               {info.map(([label, value], index) => (
@@ -190,11 +183,7 @@ export default function EmployeeDetails({
                   <dt className="text-blue-700">{label}</dt>
                   <dd
                     className="min-w-0 truncate text-left font-medium text-slate-800"
-                    dir={
-                      label === "ایمیل" || label === "شماره تلفن"
-                        ? "ltr"
-                        : undefined
-                    }>
+                    dir={label === "ایمیل" || label === "شماره تلفن" ? "ltr" : undefined}>
                     {value}
                   </dd>
                 </div>
@@ -209,6 +198,13 @@ export default function EmployeeDetails({
           </div>
         </section>
       </div>
+      {profileEditorOpen && (
+        <ProfileEditor
+          employeeId={String(employee.id)}
+          onClose={() => setProfileEditorOpen(false)}
+          onSaved={onProfileUpdated}
+        />
+      )}
     </div>
   );
 }

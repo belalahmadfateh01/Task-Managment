@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { PERIOD_KEYS, PERIOD_LABEL, STATUS_COLOR, STATUS_LABEL, STATUS_ORDER } from "@/lib/labels";
 import type { CustomRange, DateRange, PeriodKey, Status } from "@/lib/types";
 import { formatJalali } from "@/lib/jalali";
@@ -57,27 +58,75 @@ function Donut({ counts }: { counts: Record<Status, number> }) {
 const dateInput = "rounded-[10px] border border-line bg-white px-2.5 py-2 text-slate-900";
 
 export default function DonutCard({ period, onPeriod, custom, onCustom, range, counts }: Props) {
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
+  const periodMenuRef = useRef<HTMLDivElement>(null);
+  const periodButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!periodMenuOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!periodMenuRef.current?.contains(event.target as Node)) setPeriodMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPeriodMenuOpen(false);
+        periodButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [periodMenuOpen]);
+
   return (
     <section
       aria-label="نمودار گزارش‌ها"
       className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-[clamp(16px,1.6vw,28px)] md:max-lap:grid md:max-lap:grid-cols-[minmax(200px,300px)_1fr] md:max-lap:items-center md:max-lap:gap-x-8"
     >
       <div className="flex flex-col gap-1 md:max-lap:col-span-full">
-        <label className="relative inline-flex items-center self-start">
-          <span className="sr-only">بازه گزارش</span>
-          <select
-            value={period}
-            onChange={(e) => onPeriod(e.target.value as PeriodKey)}
-            className="cursor-pointer appearance-none bg-transparent py-1 pe-0 ps-6 text-[1.2em] font-bold"
+        <div ref={periodMenuRef} className="relative self-start">
+          <button
+            ref={periodButtonRef}
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded={periodMenuOpen}
+            aria-label="بازه گزارش"
+            onClick={() => setPeriodMenuOpen((open) => !open)}
+            className="inline-flex cursor-pointer items-center gap-1.5 py-1 text-[1.2em] font-bold text-slate-900"
           >
-            {PERIOD_KEYS.map((k) => (
-              <option key={k} value={k}>
-                {PERIOD_LABEL[k]}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={18} aria-hidden className="pointer-events-none absolute start-auto left-0" />
-        </label>
+            {PERIOD_LABEL[period]}
+            <ChevronDown size={18} aria-hidden className={`transition-transform ${periodMenuOpen ? "rotate-180" : ""}`} />
+          </button>
+          {periodMenuOpen && (
+            <div
+              role="listbox"
+              aria-label="بازه گزارش"
+              className="absolute right-0 top-full z-20 mt-2 min-w-max rounded-xl border border-line bg-white p-1.5 text-right shadow-xl"
+            >
+              {PERIOD_KEYS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="option"
+                  aria-selected={period === key}
+                  onClick={() => {
+                    onPeriod(key);
+                    setPeriodMenuOpen(false);
+                    periodButtonRef.current?.focus();
+                  }}
+                  className={`w-full rounded-lg px-3 py-2 text-right text-sm transition hover:bg-surface ${
+                    period === key ? "font-bold text-slate-900" : "font-normal text-slate-500"
+                  }`}
+                >
+                  {PERIOD_LABEL[key]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <p dir="ltr" className="text-right text-[0.88em] text-slate-500">
           {formatJalali(range.from, "/")} ← {formatJalali(range.to, "/")}
         </p>

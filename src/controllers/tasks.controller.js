@@ -1,5 +1,5 @@
 import {
-    createTask, deleteTask, getTaskById, getTasks, updateTask, updateTaskStatus
+    createTask, deleteTask, getTaskById, getTasks, updateTask, updateTaskStatus, submitTaskResponse
 } from "../services/tasks.service.js";
 import catchAsyncError from "../utils/catchAsyncError.js";
 
@@ -23,6 +23,11 @@ const updateTaskStatusController = catchAsyncError(async (req, res) => {
     res.status(200).json({ success: true, statusCode: 200, message: assignment });
 });
 
+const submitTaskResponseController = catchAsyncError(async (req, res) => {
+    const assignment = await submitTaskResponse(req.params.id, req.employee.id, req.body.response);
+    res.status(200).json({ success: true, statusCode: 200, message: assignment });
+});
+
 const updateTaskController = catchAsyncError(async (req, res) => {
     const task = await updateTask(req.params.id, req.body);
     res.status(200).json({ success: true, statusCode: 200, message: task });
@@ -35,5 +40,6 @@ const deleteTaskController = catchAsyncError(async (req, res) => {
 
 export {
     createTaskController, getTasksController, getTaskByIdController,
-    updateTaskStatusController, updateTaskController, deleteTaskController
+    updateTaskStatusController, submitTaskResponseController,
+    updateTaskController, deleteTaskController
 };

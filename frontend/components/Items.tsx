@@ -1,6 +1,7 @@
 "use client";
 
 import { Paperclip } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { InboxReport } from "@/lib/inbox";
 
@@ -10,8 +11,8 @@ export default function Items({
   onToggleSelected,
 }: {
   items: InboxReport[];
-  selectedIds: number[];
-  onToggleSelected: (id: number) => void;
+  selectedIds: string[];
+  onToggleSelected: (id: string) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -47,17 +48,23 @@ export default function Items({
             )}
           </div>
           <Link
-            href={
-              report.employeeReportId
-                ? `/inbox/employee-${report.employeeReportId}`
-                : `/inbox/${report.id}`
-            }
+            href={`/inbox/${report.backendId ?? report.id}`}
             className="min-w-0 flex-[2] truncate text-center font-semibold hover:text-brand-deep"
             title={report.title}>
             {report.title}
           </Link>
           <label className="flex min-w-0 flex-1 justify-end gap-3">
             <span className="truncate font-medium">{report.sender}</span>
+            {report.senderAvatar && (
+              <Image
+                src={report.senderAvatar}
+                alt=""
+                width={28}
+                height={28}
+                unoptimized
+                className="size-7 shrink-0 rounded-full object-cover"
+              />
+            )}
             <input
               type="checkbox"
               checked={selectedIds.includes(report.id)}

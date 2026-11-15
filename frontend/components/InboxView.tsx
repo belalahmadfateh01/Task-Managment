@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, ChevronRight, Printer, X } from "lucide-react";
 import Items from "@/components/Items";
@@ -9,22 +9,43 @@ import InboxReportContent from "@/components/InboxReportContent";
 import InboxReportSidebar from "@/components/InboxReportSidebar";
 import InboxToolbar from "@/components/InboxToolbar";
 import { attachmentStyle } from "@/components/inboxAttachmentStyle";
-import { reports, type InboxAttachment, type InboxReport } from "@/lib/inbox";
-import {
-  readEmployeeReports,
-  readEmployees,
-  writeEmployeeReports,
-  type EmployeeReport,
-} from "@/lib/clientStore";
+import { type InboxAttachment, type InboxReport } from "@/lib/inbox";
+import { api, apiAssetUrl } from "@/lib/api";
 
 type ReportDecision = "approved" | "rejected";
 
-function inboxId(value: string) {
-  const hash = Array.from(value).reduce(
-    (current, character) => (current * 31 + character.charCodeAt(0)) | 0,
-    0,
-  );
-  return -Math.max(1, Math.abs(hash));
+function mapReport(row: Record<string, unknown>): InboxReport {
+  const createdAt = new Date(String(row.report_date ?? ""));
+  const status = row.status === "accept" || row.status === "comment" ? row.status : "pending";
+  const name = [row.f_name, row.l_name].filter(Boolean).join(" ");
+  const fileName = typeof row.file_name === "string" ? row.file_name : undefined;
+  const filePath = typeof row.file_path === "string" ? row.file_path : undefined;
+  const fileSize = Number(row.file_size ?? 0);
+  const id = String(row.id);
+  return {
+    id,
+    backendId: id,
+    status,
+    archived: Boolean(row.archived_at),
+    reviewedAt: status === "pending" ? undefined : String(row.updated_at ?? ""),
+    sender: name || "کارمند",
+    senderAvatar: apiAssetUrl(typeof row.image === "string" ? row.image : null),
+    title: String(row.title ?? ""),
+    category: row.read_at ? "خوانده شده" : "خوانده نشده",
+    hasAttachment: Boolean(fileName),
+    createdAt: createdAt.getTime(),
+    date: new Intl.DateTimeFormat("fa-IR-u-ca-persian").format(createdAt),
+    time: new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit" }).format(createdAt),
+    content: String(row.text ?? ""),
+    attachmentName: fileName,
+    attachments: fileName ? [{
+      id: `${id}-attachment`,
+      name: fileName,
+      size: fileSize ? `${(fileSize / (1024 * 1024)).toFixed(1)} MB` : "",
+      downloadEndpoint: filePath ? `/report/${id}/file` : undefined,
+    }] : [],
+    commentText: typeof row.comment_text === "string" ? row.comment_text : undefined,
+  };
 }
 
 export default function InboxView({
@@ -35,79 +56,61 @@ export default function InboxView({
   reportId?: string;
 }) {
   const [activeTab, setActiveTab] = useState("همه");
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("همه");
   const [isOpen, setIsOpen] = useState(false);
   const [decision, setDecision] = useState<ReportDecision | null>(null);
   const [decisionAt, setDecisionAt] = useState<Date | null>(null);
-  const [employeeReports, setEmployeeReports] = useState<EmployeeReport[]>([]);
-  const [employees, setEmployees] = useState<ReturnType<typeof readEmployees>>(
-    [],
-  );
   const [pendingDecision, setPendingDecision] = useState<ReportDecision | null>(
     null,
   );
-  const [notifySender, setNotifySender] = useState(true);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [isSavingDecision, setIsSavingDecision] = useState(false);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [backendReports, setBackendReports] = useState<InboxReport[]>([]);
+  const markedReports = useRef(new Set<string>());
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
-    setEmployeeReports(readEmployeeReports());
-    setEmployees(readEmployees());
+    api<Record<string, unknown>[]>("/report?limit=100")
+      .then((rows) => setBackendReports(rows.map(mapReport)))
+      .catch((cause) => setLoadError(cause instanceof Error ? cause.message : "بارگذاری صندوق ورودی ناموفق بود."));
   }, []);
 
-  const employeeInboxReports = useMemo<InboxReport[]>(
-    () =>
-      employeeReports
-        .filter((item) => item.status !== "draft")
-        .map((item) => {
-          const created = new Date(item.createdAt);
-          const employee = employees.find(
-            (person) => person.id === item.employeeId,
-          );
-          const attachment: InboxAttachment[] = item.attachment
-            ? [{ id: `${item.id}-attachment`, ...item.attachment }]
-            : [];
-          return {
-            id: inboxId(item.id),
-            employeeReportId: item.id,
-            sender: employee?.name ?? "کارمند",
-            title: item.title,
-            category: "خوانده نشده" as const,
-            hasAttachment: attachment.length > 0,
-            createdAt: created.getTime(),
-            date: new Intl.DateTimeFormat("fa-IR-u-ca-persian").format(created),
-            time: new Intl.DateTimeFormat("fa-IR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }).format(created),
-            content: item.content,
-            attachments: attachment,
-            attachmentName: item.attachment?.name,
-            attachmentSize: item.attachment?.size,
-          };
-        }),
-    [employeeReports, employees],
-  );
-  const allReports = useMemo(
-    () => [...reports, ...employeeInboxReports],
-    [employeeInboxReports],
-  );
+  useEffect(() => {
+    if (!reportId) return;
+    void api<Record<string, unknown>[]>(`/report/${reportId}`)
+      .then((rows) => {
+        const item = mapReport(rows[0]);
+        setBackendReports((current) => current.some((row) => row.backendId === reportId)
+          ? current
+          : [item, ...current]);
+      })
+      .catch((cause) => setLoadError(cause instanceof Error ? cause.message : "بارگذاری گزارش ناموفق بود."));
+  }, [reportId]);
+
   const activeReport =
     report ??
-    employeeInboxReports.find(
-      (item) => `employee-${item.employeeReportId}` === reportId,
-    );
-  const employeeSubmission = activeReport?.employeeReportId
-    ? employeeReports.find((item) => item.id === activeReport.employeeReportId)
-    : undefined;
+    backendReports.find((item) => item.backendId === reportId);
+
+  useEffect(() => {
+    if (!reportId || !activeReport?.backendId || activeReport.category === "خوانده شده" || markedReports.current.has(reportId)) return;
+    markedReports.current.add(reportId);
+    void api(`/report/${reportId}/read`, { method: "PATCH" })
+      .then(() => setBackendReports((current) => current.map((item) => item.backendId === reportId
+        ? { ...item, category: "خوانده شده" }
+        : item)))
+      .catch((cause) => setActionError(cause instanceof Error ? cause.message : "ثبت خوانده‌شدن گزارش ناموفق بود."));
+  }, [reportId, activeReport?.backendId, activeReport?.category]);
   const activeDecision: ReportDecision | null =
-    employeeSubmission?.status === "approved" ||
-    employeeSubmission?.status === "rejected"
-      ? employeeSubmission.status
-      : employeeSubmission
-        ? null
+    activeReport?.status === "accept"
+      ? "approved"
+      : activeReport?.status === "comment"
+        ? "rejected"
         : decision;
-  const activeDecisionAt = employeeSubmission?.reviewedAt
-    ? new Date(employeeSubmission.reviewedAt)
+  const activeDecisionAt = activeReport?.reviewedAt
+    ? new Date(activeReport.reviewedAt)
     : decisionAt;
 
   useEffect(() => {
@@ -120,31 +123,33 @@ export default function InboxView({
   }, [pendingDecision]);
 
   const filteredReports = useMemo(() => {
-    const baseList = allReports.filter((item) => {
+    const baseList = backendReports.filter((item) => !item.archived);
+    const tabList = baseList.filter((item) => {
       if (activeTab === "همه") return true;
       return item.category === activeTab;
     });
 
     switch (selectedFilter) {
       case "دارای ضمیمه":
-        return baseList.filter((item) => item.hasAttachment);
+        return tabList.filter((item) => item.hasAttachment);
       case "بدون ضمیمه":
-        return baseList.filter((item) => !item.hasAttachment);
+        return tabList.filter((item) => !item.hasAttachment);
       case "تازه‌ترین":
-        return [...baseList].sort((a, b) => b.createdAt - a.createdAt);
+        return [...tabList].sort((a, b) => b.createdAt - a.createdAt);
       case "قدیمی‌ترین":
-        return [...baseList].sort((a, b) => a.createdAt - b.createdAt);
+        return [...tabList].sort((a, b) => a.createdAt - b.createdAt);
       default:
-        return baseList;
+        return tabList;
     }
-  }, [activeTab, allReports, selectedFilter]);
+  }, [activeTab, backendReports, selectedFilter]);
 
+  const visibleInboxReports = backendReports.filter((item) => !item.archived);
   const allItemsSelected =
-    allReports.length > 0 &&
-    allReports.every((item) => selectedIds.includes(item.id));
+    visibleInboxReports.length > 0 &&
+    visibleInboxReports.every((item) => selectedIds.includes(item.id));
 
   const toggleAllItems = () => {
-    const itemIds = new Set(allReports.map((item) => item.id));
+    const itemIds = new Set(visibleInboxReports.map((item) => item.id));
     setSelectedIds((current) =>
       allItemsSelected
         ? current.filter((id) => !itemIds.has(id))
@@ -152,7 +157,7 @@ export default function InboxView({
     );
   };
 
-  const toggleSelected = (id: number) => {
+  const toggleSelected = (id: string) => {
     setSelectedIds((current) =>
       current.includes(id)
         ? current.filter((selectedId) => selectedId !== id)
@@ -160,10 +165,41 @@ export default function InboxView({
     );
   };
 
+  const selectedReports = visibleInboxReports.filter((item) => selectedIds.includes(item.id));
+  const bulkArchive = async () => {
+    const targets = selectedReports.filter((item) => item.backendId);
+    if (!targets.length) return;
+    setIsBulkUpdating(true);
+    setActionError("");
+    const results = await Promise.allSettled(targets.map((item) => api(`/report/${item.backendId}/archive`, {
+      method: "PATCH",
+      body: JSON.stringify({ archived: true }),
+    })));
+    const archivedIds = new Set(targets.filter((_item, index) => results[index].status === "fulfilled").map((item) => item.id));
+    setBackendReports((current) => current.map((item) => archivedIds.has(item.id) ? { ...item, archived: true } : item));
+    setSelectedIds((current) => current.filter((id) => !archivedIds.has(id)));
+    const failedCount = results.length - archivedIds.size;
+    if (failedCount) setActionError(`بایگانی ${failedCount} گزارش ناموفق بود.`);
+    setIsBulkUpdating(false);
+  };
+
+  const bulkMarkRead = async () => {
+    const targets = selectedReports.filter((item) => item.category === "خوانده نشده" && item.backendId);
+    if (!targets.length) return;
+    setIsBulkUpdating(true);
+    setActionError("");
+    const results = await Promise.allSettled(targets.map((item) => api(`/report/${item.backendId}/read`, { method: "PATCH" })));
+    const readIds = new Set(targets.filter((_item, index) => results[index].status === "fulfilled").map((item) => item.id));
+    setBackendReports((current) => current.map((item) => readIds.has(item.id) ? { ...item, category: "خوانده شده" } : item));
+    const failedCount = results.length - readIds.size;
+    if (failedCount) setActionError(`ثبت خوانده‌شدن ${failedCount} گزارش ناموفق بود.`);
+    setIsBulkUpdating(false);
+  };
+
   if (reportId && !activeReport) {
     return (
       <p className="p-8 text-center text-sm text-slate-500">
-        در حال بارگذاری گزارش...
+        {loadError || "در حال بارگذاری گزارش..."}
       </p>
     );
   }
@@ -217,6 +253,11 @@ export default function InboxView({
             <ChevronRight size={15} aria-hidden="true" />
           </Link>
         </div>
+        {actionError && (
+          <p role="alert" className="col-span-full rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {actionError}
+          </p>
+        )}
 
         <div
           className="col-span-full grid min-h-0 grid-cols-1 grid-rows-[auto_auto] gap-3 overflow-y-auto md:grid-cols-[minmax(190px,240px)_minmax(0,1fr)] md:grid-rows-1 md:overflow-hidden"
@@ -240,7 +281,6 @@ export default function InboxView({
             isRejected={isRejected}
             statusLabel={statusLabel}
             decisionDate={decisionDate}
-            notifySender={notifySender}
           />
         </div>
 
@@ -269,14 +309,21 @@ export default function InboxView({
               <>
                 <button
                   type="button"
-                  onClick={() => setPendingDecision("rejected")}
+                  onClick={() => {
+                    setActionError("");
+                    setFeedbackText("");
+                    setPendingDecision("rejected");
+                  }}
                   className="inline-flex items-center gap-1.5 rounded-md border border-red-500 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">
                   <X size={15} aria-hidden="true" />
                   رد گزارش
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPendingDecision("approved")}
+                  onClick={() => {
+                    setActionError("");
+                    setPendingDecision("approved");
+                  }}
                   className="inline-flex items-center gap-1.5 rounded-md bg-brand-deep px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
                   <Check size={15} aria-hidden="true" />
                   تأیید گزارش
@@ -290,24 +337,55 @@ export default function InboxView({
           <InboxDecisionDialog
             report={activeReport}
             pendingDecision={pendingDecision}
-            notifySender={notifySender}
-            onNotifySenderChange={setNotifySender}
-            onCancel={() => setPendingDecision(null)}
-            onConfirm={() => {
-              if (employeeSubmission) {
-                const reviewedAt = new Date().toISOString();
-                const updatedReports = employeeReports.map((item) =>
-                  item.id === employeeSubmission.id
-                    ? { ...item, status: pendingDecision, reviewedAt }
+            feedbackText={feedbackText}
+            onFeedbackTextChange={setFeedbackText}
+            isSaving={isSavingDecision}
+            error={actionError}
+            onCancel={() => {
+              if (isSavingDecision) return;
+              setPendingDecision(null);
+              setActionError("");
+            }}
+            onConfirm={async () => {
+              if (!activeReport.backendId) return;
+              if (pendingDecision === "rejected" && !feedbackText.trim()) {
+                setActionError("برای بازگرداندن گزارش، بازخورد را بنویسید.");
+                return;
+              }
+              setActionError("");
+              const status = pendingDecision === "approved" ? "accept" : "comment";
+              setIsSavingDecision(true);
+              try {
+                if (pendingDecision === "approved") {
+                  await api(`/report/${activeReport.backendId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ status }),
+                  });
+                } else {
+                  await api(`/comment/${activeReport.backendId}`, {
+                    method: "POST",
+                    body: JSON.stringify({ text: feedbackText.trim() }),
+                  });
+                }
+                setBackendReports((current) => current.map((item) =>
+                  item.backendId === activeReport.backendId
+                    ? {
+                        ...item,
+                        status,
+                        category: "خوانده شده",
+                        reviewedAt: new Date().toISOString(),
+                        commentText: pendingDecision === "rejected" ? feedbackText.trim() : item.commentText,
+                      }
                     : item,
-                );
-                writeEmployeeReports(updatedReports);
-                setEmployeeReports(updatedReports);
-              } else {
+                ));
                 setDecision(pendingDecision);
                 setDecisionAt(new Date());
+                setPendingDecision(null);
+              } catch (cause) {
+                setActionError(cause instanceof Error ? cause.message : "ثبت تصمیم ناموفق بود.");
+              } finally {
+                setIsSavingDecision(false);
               }
-              setPendingDecision(null);
             }}
           />
         )}
@@ -317,6 +395,16 @@ export default function InboxView({
 
   return (
     <div dir="ltr" className="w-full p-4">
+      {loadError && (
+        <p role="alert" className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {loadError}
+        </p>
+      )}
+      {actionError && (
+        <p role="alert" className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {actionError}
+        </p>
+      )}
       <InboxToolbar
         activeTab={activeTab}
         onActiveTabChange={setActiveTab}
@@ -330,6 +418,15 @@ export default function InboxView({
           setIsOpen(false);
         }}
       />
+
+      {selectedIds.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+          <span className="ml-auto text-xs font-medium text-blue-900">{selectedIds.length.toLocaleString("fa-IR")} گزارش انتخاب شد</span>
+          <button type="button" disabled={isBulkUpdating || !selectedReports.some((item) => item.category === "خوانده نشده")} onClick={() => void bulkMarkRead()} className="rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 disabled:opacity-50">علامت‌گذاری به‌عنوان خوانده‌شده</button>
+          <button type="button" disabled={isBulkUpdating} onClick={() => void bulkArchive()} className="rounded-md bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">بایگانی انتخاب‌شده‌ها</button>
+          <button type="button" disabled={isBulkUpdating} onClick={() => setSelectedIds([])} className="rounded-md px-3 py-1.5 text-xs text-slate-600 disabled:opacity-50">لغو انتخاب</button>
+        </div>
+      )}
 
       <div className="mt-5 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-[#E7EDF8]">
         <Items

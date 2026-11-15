@@ -1,19 +1,19 @@
-# گزارش یار — Dashboard (Next.js + TypeScript)
+# گزارش‌یار — فرانت‌اند
 
-    npm install
-    npm run dev        # http://localhost:3000
-    npm run typecheck
+این Next.js app به API موجود در `../` وصل است.
 
-- Styled with Tailwind CSS v4 (`app/globals.css`, utility classes in components).
-- Period filter (daily / weekly / monthly / yearly / custom range) lives in the donut card header and drives the stat cards, chart and table.
-- Row actions (تائید، بازخورد، بایگانی، حذف) are in the "..." menu.
-- Demo data: `lib/data.ts` → replace `createMockReports` with your API call in `components/Dashboard.tsx`.
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
 
-## Routes
-| URL | File | Page |
-|---|---|---|
-| `/` | `app/page.tsx` | Welcome / start |
-| `/login` | `app/login/page.tsx` | Login |
-| `/dashboard` | `app/dashboard/page.tsx` | Dashboard |
+`BACKEND_URL` در `.env` باید به API اشاره کند (پیش‌فرض: `http://localhost:3001`). اگر API مستقیم از مرورگر فراخوانی می‌شود، `NEXT_PUBLIC_API_URL` را هم تنظیم کنید و مبدأ فرانت‌اند را در `CLIENT_ORIGINS` بک‌اند مجاز کنید.
 
-Put your images in `public/imges/` (`lines.png`, `first.png`, `Vector.svg`, `Frame 9.svg`).
+برای بررسی TypeScript:
+
+```bash
+npm run typecheck
+```
+
+صفحه‌های مدیر در `/dashboard`, `/inbox`, `/employees` و `/tasks` هستند. پیش‌نویس‌ها و صفحه‌های کارمند زیر `/employee/*` قرار دارند. احراز هویت با کوکی HTTP-only انجام می‌شود.

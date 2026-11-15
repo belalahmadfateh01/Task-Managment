@@ -1,8 +1,13 @@
 "use client";
 
-import { Bell, CalendarDays } from "lucide-react";
+import { CalendarDays, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatJalali, formatTime } from "@/lib/jalali";
+import NotificationBell from "@/components/NotificationBell";
+import ProfileEditor from "@/components/ProfileEditor";
+import { api } from "@/lib/api";
+import { clearSession } from "@/lib/clientStore";
 
 type HeaderProps = {
   title?: string;
@@ -13,6 +18,7 @@ export default function Header({
   title = "نمای کلی",
   description = "خلاصه وضعیت عملکرد و گزارش‌های اخیر",
 }: HeaderProps) {
+  const router = useRouter();
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -28,17 +34,21 @@ export default function Header({
         <p className="text-[0.88em] text-slate-500">{description}</p>
       </div>
       <div className="flex flex-row-reverse items-center gap-3">
-        <div
-          className="grid size-11 place-items-center rounded-full bg-slate-600 font-bold text-white"
-          aria-label="پروفایل کاربر">
-          م
-        </div>
         <button
-          aria-label="اعلان‌ها"
-          className="relative grid size-11 place-items-center rounded-xl border border-line text-slate-700 hover:bg-surface">
-          <Bell size={20} strokeWidth={1.6} />
-          <span className="absolute right-2.5 top-2 size-2 rounded-full bg-red-500" />
+          type="button"
+          onClick={() => {
+            void api("/employee/logout", { method: "POST" }).catch(() => {}).finally(() => {
+              clearSession();
+              router.replace("/login");
+            });
+          }}
+          aria-label="خروج از حساب"
+          title="خروج از حساب"
+          className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600">
+          <LogOut size={18} />
         </button>
+        <ProfileEditor />
+        <NotificationBell />
         <div className="flex h-11 items-center gap-2.5 rounded-xl border border-line px-3.5 font-medium text-slate-700">
           <CalendarDays size={18} strokeWidth={1.6} aria-hidden />
           <span className="max-md:hidden">{now ? formatJalali(now) : "—"}</span>

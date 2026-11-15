@@ -8,8 +8,7 @@
     "start": "node --env-file=.env src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
     "db:migrate": "node --env-file=.env src/db/migrate.js",
-    "admin:create": "node --env-file=.env src/db/create-admin.js",
-    "test": "node --test-reporter=spec test/backend-utils.test.js"
+    "admin:create": "node --env-file=.env src/db/create-admin.js"
   },
   "repository": {
     "type": "git",
@@ -26,6 +25,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
     "pg": "^8.23.1"
   }
 }

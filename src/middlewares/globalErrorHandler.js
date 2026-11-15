@@ -2,6 +2,14 @@ const globalErrorHandler = (err, req, res, next) => {
     if (res.headersSent) return next(err);
     let statusCode = err.statusCode || 500;
     let message = statusCode < 500 ? (err.message || "Request failed") : "Internal Server Error";
+
+    if (err.name === "MulterError") {
+        statusCode = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+        message = err.code === "LIMIT_FILE_SIZE"
+            ? "Uploaded file is too large"
+            : "Invalid uploaded file";
+    }
+
     if (statusCode === 500) {
         console.error(err);
     }

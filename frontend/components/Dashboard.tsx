@@ -8,7 +8,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createMockReports } from "@/lib/data";
+import { api, apiAssetUrl } from "@/lib/api";
 import { toInputDate } from "@/lib/jalali";
 import { STATUS_ORDER } from "@/lib/labels";
 import { getRange, inRange } from "@/lib/period";
@@ -41,16 +41,24 @@ export default function Dashboard() {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [note, setNote] = useState("");
+  const [loadError, setLoadError] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Load data on the client so "today" is the user's today (replace with an API call).
   useEffect(() => {
     const n = new Date();
     const from = new Date(n);
     from.setDate(from.getDate() - 29);
     setNow(n);
     setCustom({ from: toInputDate(from), to: toInputDate(n) });
-    setReports(createMockReports(n));
+    api<Record<string, unknown>[]>("/report?limit=100")
+      .then((rows) => setReports(rows.map((row) => ({
+        id: String(row.id), title: String(row.title ?? ""),
+        sender: [row.f_name, row.l_name].filter(Boolean).join(" "),
+        senderAvatar: apiAssetUrl(typeof row.image === "string" ? row.image : null),
+        status: row.status === "accept" ? "approved" : row.status === "comment" ? "feedback" : "pending",
+        createdAt: String(row.report_date ?? n.toISOString()), archived: Boolean(row.archived_at),
+      }))))
+      .catch((error) => setLoadError(error instanceof Error ? error.message : "بارگذاری گزارش‌ها ناموفق بود."));
   }, []);
 
   const range = useMemo(
@@ -75,8 +83,10 @@ export default function Dashboard() {
   }, [inPeriod]);
 
   const total = STATUS_ORDER.reduce((s, k) => s + counts[k], 0);
-  const archivedCount = inPeriod.filter((r) => r.archived).length;
-  const viewRows = inPeriod.filter((r) => r.archived === (view === "archived"));
+  const archivedCount = reports.filter((r) => r.archived).length;
+  const viewRows = view === "archived"
+    ? reports.filter((r) => r.archived)
+    : inPeriod.filter((r) => !r.archived);
   const rows = showAll ? viewRows : viewRows.slice(0, PAGE_SIZE);
 
   // Close the row menu on outside click / Escape / scroll / resize
@@ -117,10 +127,23 @@ export default function Dashboard() {
     ? reports.find((r) => r.id === dialog.id)
     : undefined;
 
-  const approve = (id: string) =>
-    patch(id, (r) => ({ ...r, status: "approved" }));
-  const toggleArchive = (r: Report) =>
-    patch(r.id, (x) => ({ ...x, archived: !x.archived }));
+  const approve = async (id: string) => {
+    try {
+      await api(`/report/${id}`, { method: "PATCH", body: JSON.stringify({ status: "accept" }) });
+      patch(id, (r) => ({ ...r, status: "approved" }));
+    } catch (error) { setLoadError(error instanceof Error ? error.message : "ثبت تأیید ناموفق بود."); }
+  };
+  const toggleArchive = async (r: Report) => {
+    try {
+      const result = await api<{ archived_at: string | null }>(`/report/${r.id}/archive`, {
+        method: "PATCH",
+        body: JSON.stringify({ archived: !r.archived }),
+      });
+      patch(r.id, (x) => ({ ...x, archived: Boolean(result.archived_at) }));
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "تغییر بایگانی گزارش ناموفق بود.");
+    }
+  };
 
   if (!now || !range) {
     return <p className="text-slate-500">در حال بارگذاری…</p>;
@@ -128,6 +151,7 @@ export default function Dashboard() {
 
   return (
     <>
+      {loadError && <p role="alert" className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</p>}
       <StatCards
         approved={counts.approved}
         total={total}
@@ -194,7 +218,7 @@ export default function Dashboard() {
             role="menuitem"
             className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[0.9em] hover:bg-surface"
             onClick={() => {
-              toggleArchive(menuReport);
+              void toggleArchive(menuReport);
               setMenu(null);
             }}>
             {menuReport.archived ? (
@@ -223,12 +247,9 @@ export default function Dashboard() {
           confirmLabel="ثبت بازخورد"
           onClose={() => setDialog(null)}
           onConfirm={() => {
-            patch(dialogReport.id, (r) => ({
-              ...r,
-              status: "feedback",
-              note: note.trim() || undefined,
-            }));
-            setDialog(null);
+            void api(`/comment/${dialogReport.id}`, { method: "POST", body: JSON.stringify({ text: note.trim() }) })
+              .then(() => { patch(dialogReport.id, (r) => ({ ...r, status: "feedback", note: note.trim() })); setDialog(null); })
+              .catch((error) => setLoadError(error instanceof Error ? error.message : "ثبت بازخورد ناموفق بود."));
           }}>
           <textarea
             className="w-full resize-y rounded-[10px] border border-line bg-white px-3 py-2.5"
@@ -249,8 +270,9 @@ export default function Dashboard() {
           danger
           onClose={() => setDialog(null)}
           onConfirm={() => {
-            setReports((rs) => rs.filter((r) => r.id !== dialogReport.id));
-            setDialog(null);
+            void api(`/report/${dialogReport.id}`, { method: "DELETE" })
+              .then(() => { setReports((rs) => rs.filter((r) => r.id !== dialogReport.id)); setDialog(null); })
+              .catch((error) => setLoadError(error instanceof Error ? error.message : "حذف گزارش ناموفق بود."));
           }}
         />
       )}

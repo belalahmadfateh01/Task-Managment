@@ -8,17 +8,21 @@ type ReportDecision = "approved" | "rejected";
 type InboxDecisionDialogProps = {
   report: InboxReport;
   pendingDecision: ReportDecision;
-  notifySender: boolean;
-  onNotifySenderChange: (notify: boolean) => void;
+  feedbackText: string;
+  onFeedbackTextChange: (feedback: string) => void;
+  isSaving: boolean;
+  error: string;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 };
 
 export default function InboxDecisionDialog({
   report,
   pendingDecision,
-  notifySender,
-  onNotifySenderChange,
+  feedbackText,
+  onFeedbackTextChange,
+  isSaving,
+  error,
   onCancel,
   onConfirm,
 }: InboxDecisionDialogProps) {
@@ -70,15 +74,25 @@ export default function InboxDecisionDialog({
               : "این تصمیم نهایی است و گزارش برای اصلاح بازمی‌گردد."}
           </span>
         </div>
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-[11px] text-slate-700">
-          <input
-            type="checkbox"
-            checked={notifySender}
-            onChange={(event) => onNotifySenderChange(event.target.checked)}
-            className="size-4 accent-green-600"
-          />
-          ارسال اعلان به {report.sender}
-        </label>
+        {pendingDecision === "rejected" && (
+          <label className="mt-3 grid gap-1.5 text-[11px] font-medium text-slate-700">
+            دلیل بازگشت برای اصلاح
+            <textarea
+              value={feedbackText}
+              onChange={(event) => onFeedbackTextChange(event.currentTarget.value)}
+              maxLength={10000}
+              rows={3}
+              required
+              className="resize-y rounded-md border border-slate-300 px-2.5 py-2 text-xs font-normal outline-none focus:border-blue-500"
+              placeholder="نکته‌های لازم برای اصلاح گزارش را بنویسید"
+            />
+          </label>
+        )}
+        {error && (
+          <p role="alert" className="mt-2 text-xs text-red-600">
+            {error}
+          </p>
+        )}
         <div className="mt-4 flex flex-row-reverse justify-end gap-2">
           <button
             type="button"
@@ -88,8 +102,9 @@ export default function InboxDecisionDialog({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
-            autoFocus
+            onClick={() => void onConfirm()}
+            disabled={isSaving || (pendingDecision === "rejected" && !feedbackText.trim())}
+            autoFocus={pendingDecision === "approved"}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold text-white ${
               pendingDecision === "approved"
                 ? "bg-green-600 hover:bg-green-700"
@@ -100,7 +115,7 @@ export default function InboxDecisionDialog({
             ) : (
               <X size={14} aria-hidden="true" />
             )}
-            {pendingDecision === "approved" ? "تأیید نهایی" : "رد نهایی"}
+            {isSaving ? "در حال ثبت…" : pendingDecision === "approved" ? "تأیید نهایی" : "ارسال بازخورد و بازگشت"}
           </button>
         </div>
       </section>
