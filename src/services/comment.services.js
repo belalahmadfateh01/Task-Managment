@@ -5,7 +5,7 @@ const createComment = async (reportId, employee, data) => {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
-        const report = await client.query("SELECT id FROM reports WHERE id = $1 FOR UPDATE", [reportId]);
+        const report = await client.query("SELECT id, title FROM reports WHERE id = $1 FOR UPDATE", [reportId]);
         if (!report.rows[0]) throw new ApiError(404, "Report not found");
         const { rows } = await client.query(
             `INSERT INTO comments (id, text, report_id, admin_id)
@@ -13,6 +13,10 @@ const createComment = async (reportId, employee, data) => {
             [data.text, reportId, employee.id]
         );
         await client.query("UPDATE reports SET status = 'comment', admin_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", [employee.id, reportId]);
+        await client.query(`INSERT INTO notifications (employee_id, type, title, body, href, report_id)
+            SELECT teacher_id, 'report_feedback', 'برای گزارش شما بازخورد ثبت شد', $1, $2, $3
+            FROM reports WHERE id = $3`,
+        [`در گزارش مربوط به «${report.rows[0].title ?? ""}» بازخورد تازه‌ای ثبت شده است.`, `/employee/reports/${reportId}`, reportId]);
         await client.query("COMMIT");
         return rows[0];
     } catch (error) {

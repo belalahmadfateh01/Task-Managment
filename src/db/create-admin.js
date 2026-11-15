@@ -19,7 +19,7 @@ try {
         await client.query(
             `INSERT INTO employees (f_name, l_name, user_name, email, password, role)
              VALUES ($1, $2, $3, $4, $5, 'admin')`,
-            [process.env.ADMIN_F_NAME, process.env.ADMIN_L_NAME, process.env.ADMIN_USER_NAME, process.env.ADMIN_EMAIL, hash]
+            [process.env.ADMIN_F_NAME.trim(), process.env.ADMIN_L_NAME.trim(), process.env.ADMIN_USER_NAME.trim(), process.env.ADMIN_EMAIL.trim().toLowerCase(), hash]
         );
         await client.query("COMMIT");
     } catch (error) {

@@ -1,12 +1,15 @@
 export type Status = "received" | "feedback" | "approved" | "pending";
 
 export interface Employee {
-  id: number;
+  id: string | number;
   name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   password?: string;
   avatar: string;
   joinedAt: string;
+  lastLoginAt?: string;
   phone?: string;
   address?: string;
 }
@@ -15,6 +18,7 @@ export interface Report {
   id: string;
   title: string;
   sender: string;
+  senderAvatar?: string;
   status: Status;
   /** ISO string */
   createdAt: string;

@@ -3,16 +3,14 @@ import ApiError from "../utils/ApiError.js";
 
 const authentication = (req, res, next) => {
     const authHeader = req.headers.authorization;
-
-    if (!authHeader) {
-        throw new ApiError(401, "Unauthorized");
-    }
-
-    const [scheme, token] = authHeader.split(" ");
-
-    if (scheme !== "Bearer" || !token) {
-        throw new ApiError(401, "Invalid authorization format");
-    }
+    const cookieToken = req.headers.cookie
+        ?.split(";")
+        .map(value => value.trim())
+        .find(value => value.startsWith("access_token="))
+        ?.slice("access_token=".length);
+    const [scheme, bearerToken] = authHeader?.split(" ") ?? [];
+    const token = cookieToken || (scheme === "Bearer" ? bearerToken : null);
+    if (!token) throw new ApiError(401, "Unauthorized");
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);

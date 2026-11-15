@@ -6,9 +6,9 @@ import type { Employee } from "@/lib/types";
 
 interface EmployeesTableProps {
   employees: Employee[];
-  selectedIds: number[];
-  onToggle: (id: number) => void;
-  onDelete: (id: number) => void;
+  selectedIds: Array<string | number>;
+  onToggle: (id: string | number) => void;
+  onDelete: (id: string | number) => void;
   onOpen: (employee: Employee) => void;
 }
 
@@ -60,7 +60,7 @@ export default function EmployeesTable({
                   alt=""
                   width={44}
                   height={44}
-                  unoptimized={employee.avatar.startsWith("data:")}
+                  unoptimized
                   className="size-9 shrink-0 rounded-full object-cover sm:size-11"
                 />
                 <span className="min-w-0">

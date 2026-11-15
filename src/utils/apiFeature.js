@@ -2,7 +2,7 @@
 import ApiError from "../utils/ApiError.js";
 
 const ReportsFilter = (queryData) => {
-    const allowedStatuses = ["pending", "accept", "comment"];
+    const allowedStatuses = ["draft", "pending", "accept", "comment"];
 
     const conditions = [];
     const values = [];
@@ -13,7 +13,8 @@ const ReportsFilter = (queryData) => {
         endDate,
         user_name,
         title,
-        file_name
+        file_name,
+        archived
     } = queryData;
 
     if (status && !allowedStatuses.includes(status)) {
@@ -49,6 +50,13 @@ const ReportsFilter = (queryData) => {
     if (status) {
         values.push(status);
         conditions.push(`r.status = $${values.length}`);
+    }
+
+    if (archived !== undefined) {
+        if (archived !== "true" && archived !== "false") {
+            throw new ApiError(400, "archived must be true or false");
+        }
+        conditions.push(archived === "true" ? "r.archived_at IS NOT NULL" : "r.archived_at IS NULL");
     }
 
     if (startDate) {

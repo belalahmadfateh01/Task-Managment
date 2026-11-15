@@ -3,14 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { House, Inbox, PenLine, UserPlus, Calendar } from "lucide-react";
+import { House, Inbox, UserPlus, Calendar } from "lucide-react";
 
 const NAV = [
   { label: "صفحه اصلی", icon: House, href: "/dashboard" },
   { label: "صندوق ورودی", icon: Inbox, href: "/inbox" },
   { label: "کارمندان", icon: UserPlus, href: "/employees" },
-  { label: "پیش نویس", icon: PenLine, href: "/drafts" },
-  { label: "فعالیت ها", icon: Calendar, href: "/tasks" },
+  { label: "وظایف", icon: Calendar, href: "/tasks" },
 ];
 
 export default function Sidebar() {

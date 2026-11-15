@@ -20,12 +20,8 @@ const PAGE_META: Record<string, { title: string; description: string }> = {
     title: "کارمندان",
     description: "مدیریت اعضای تیم و وضعیت فعالیت‌ها",
   },
-  "/drafts": {
-    title: "پیش‌نویس‌ها",
-    description: "اسناد و پیشنهادهای در حال آماده‌سازی",
-  },
   "/tasks": {
-    title: "تسک‌ها",
+    title: "وظایف",
     description: "بررسی وظایف و زمان‌بندی انجام کارها",
   },
 };
@@ -42,7 +38,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
     const session = readSession();
     if (!session) router.replace("/login");
-    else if (session.role === "employee") router.replace("/employee/dashboard");
+    else if (session.role === "teacher") {
+      router.replace(pathname === "/drafts" ? "/employee/drafts" : "/employee/dashboard");
+    } else if (pathname === "/drafts") router.replace("/dashboard");
     else setAccessChecked(true);
   }, [pathname, router]);
 
@@ -57,6 +55,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     description: "نمایش محتوای صفحه",
   };
   const isInboxReportPage = pathname.startsWith("/inbox/");
+  const isSpacedAdminPage = ["/employees", "/tasks"].includes(pathname);
 
   return (
     <div
@@ -76,6 +75,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <main
             className={`flex-1 px-(--gap) pb-(--gap) [--gap:clamp(14px,1.5vw,24px)] ${
+              isSpacedAdminPage ? "pt-(--gap)" : ""
+            } ${
               isInboxReportPage ? "min-h-0 overflow-hidden" : "overflow-y-auto"
             }`}>
             {children}

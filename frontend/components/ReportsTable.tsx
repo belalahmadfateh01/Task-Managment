@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 import { STATUS_BADGE, STATUS_LABEL } from "@/lib/labels";
 import { formatJalali, formatTime } from "@/lib/jalali";
@@ -76,9 +78,25 @@ export default function ReportsTable({
               return (
                 <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="max-w-[22ch] truncate px-3 py-2.5 text-[0.88em] font-medium" title={r.title}>
-                    {r.title}
+                    <Link href={`/inbox/${r.id}`} className="hover:text-brand-deep hover:underline">
+                      {r.title}
+                    </Link>
                   </td>
-                  <td className="px-3 py-2.5 text-[0.88em] font-medium">{r.sender}</td>
+                  <td className="px-3 py-2.5 text-[0.88em] font-medium">
+                    <span className="flex items-center gap-2">
+                      {r.senderAvatar && (
+                        <Image
+                          src={r.senderAvatar}
+                          alt=""
+                          width={28}
+                          height={28}
+                          unoptimized
+                          className="size-7 rounded-full object-cover"
+                        />
+                      )}
+                      {r.sender}
+                    </span>
+                  </td>
                   <td className="px-3 py-2.5">
                     <span className={`inline-block whitespace-nowrap rounded-full px-[18px] py-1 text-[0.8em] font-semibold ${STATUS_BADGE[r.status]}`}>
                       {STATUS_LABEL[r.status]}

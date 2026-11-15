@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import InboxView from "@/components/InboxView";
-import { reports } from "@/lib/inbox";
 
 type InboxReportPageProps = {
   params: Promise<{ id: string }>;
@@ -15,10 +13,5 @@ export default async function InboxReportPage({
   params,
 }: InboxReportPageProps) {
   const { id } = await params;
-  const report = reports.find((item) => item.id === Number(id));
-
-  if (report) return <InboxView key={report.id} report={report} />;
-  if (id.startsWith("employee-")) return <InboxView key={id} reportId={id} />;
-
-  notFound();
+  return <InboxView reportId={id} />;
 }

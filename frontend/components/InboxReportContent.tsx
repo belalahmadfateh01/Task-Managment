@@ -1,7 +1,9 @@
 "use client";
 
 import { CircleCheck, CircleX, Download } from "lucide-react";
+import Image from "next/image";
 import type { InboxAttachment, InboxReport } from "@/lib/inbox";
+import { downloadApiFile } from "@/lib/api";
 import { attachmentStyle } from "@/components/inboxAttachmentStyle";
 
 type ReportDecision = "approved" | "rejected";
@@ -15,7 +17,6 @@ type InboxReportContentProps = {
   isRejected: boolean;
   statusLabel: string;
   decisionDate: string;
-  notifySender: boolean;
 };
 
 export default function InboxReportContent({
@@ -27,42 +28,51 @@ export default function InboxReportContent({
   isRejected,
   statusLabel,
   decisionDate,
-  notifySender,
 }: InboxReportContentProps) {
   return (
     <section
       className="order-1 flex min-h-0 flex-col gap-2 overflow-hidden md:order-2"
       dir="rtl">
       {decision && (
-        <div
-          role="status"
-          className={`flex shrink-0 items-center justify-between gap-3 rounded-lg border px-4 py-3 ${
-            isApproved
-              ? "border-green-400 bg-green-100 text-green-800"
-              : "border-red-400 bg-red-100 text-red-800"
-          }`}>
-          <div className="flex min-w-0 items-center gap-2">
-            {isApproved ? (
-              <CircleCheck size={20} className="shrink-0" aria-hidden="true" />
-            ) : (
-              <CircleX size={20} className="shrink-0" aria-hidden="true" />
-            )}
-            <div className="min-w-0">
-              <p className="text-sm font-bold">
-                {isApproved
-                  ? "این گزارش را تأیید کردید"
-                  : "این گزارش را رد کردید"}
-              </p>
-              <p className="mt-0.5 text-[10px]">
-                ثبت شده: {decisionDate}
-                {notifySender ? ` · اعلان برای ${report.sender} ارسال شد` : ""}
-              </p>
+        <>
+          <div
+            role="status"
+            className={`flex shrink-0 items-center justify-between gap-3 rounded-lg border px-4 py-3 ${
+              isApproved
+                ? "border-green-400 bg-green-100 text-green-800"
+                : "border-red-400 bg-red-100 text-red-800"
+            }`}>
+            <div className="flex min-w-0 items-center gap-2">
+              {isApproved ? (
+                <CircleCheck size={20} className="shrink-0" aria-hidden="true" />
+              ) : (
+                <CircleX size={20} className="shrink-0" aria-hidden="true" />
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-bold">
+                  {isApproved
+                    ? "این گزارش را تأیید کردید"
+                    : "این گزارش را رد کردید"}
+                </p>
+                <p className="mt-0.5 text-[10px]">
+                  تصمیم در {decisionDate} ثبت شد.
+                </p>
+              </div>
             </div>
+            <span className="shrink-0 rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-semibold">
+              {statusLabel}
+            </span>
           </div>
-          <span className="shrink-0 rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-semibold">
-            {statusLabel}
-          </span>
-        </div>
+
+          {report.commentText && (
+            <section className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <h2 className="text-xs font-bold text-amber-900">بازخورد ثبت‌شده</h2>
+              <p className="mt-1 whitespace-pre-wrap text-xs leading-6 text-amber-900">
+                {report.commentText}
+              </p>
+            </section>
+          )}
+        </>
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white px-5 py-5 sm:px-8">
@@ -70,11 +80,22 @@ export default function InboxReportContent({
           <div>
             <p className="text-[10px] text-slate-500">فرستنده</p>
             <div className="mt-1 flex items-center gap-2">
-              <span
-                className="grid size-7 place-items-center rounded-full bg-brand text-xs font-bold text-white"
-                aria-hidden="true">
-                {report.sender.slice(0, 1)}
-              </span>
+              {report.senderAvatar ? (
+                <Image
+                  src={report.senderAvatar}
+                  alt=""
+                  width={28}
+                  height={28}
+                  unoptimized
+                  className="size-7 rounded-full object-cover"
+                />
+              ) : (
+                <span
+                  className="grid size-7 place-items-center rounded-full bg-brand text-xs font-bold text-white"
+                  aria-hidden="true">
+                  {report.sender.slice(0, 1)}
+                </span>
+              )}
               <p className="text-xs font-semibold text-slate-900">
                 {report.sender}
               </p>
@@ -129,7 +150,15 @@ export default function InboxReportContent({
                       {attachment.size}
                     </p>
                   </div>
-                  {attachment.url ? (
+                  {attachment.downloadEndpoint ? (
+                    <button
+                      type="button"
+                      onClick={() => void downloadApiFile(attachment.downloadEndpoint!, attachment.name)}
+                      aria-label={`دانلود ${attachment.name}`}
+                      className="grid size-7 shrink-0 place-items-center rounded bg-slate-50 text-slate-600 hover:bg-slate-100">
+                      <Download size={15} aria-hidden="true" />
+                    </button>
+                  ) : attachment.url ? (
                     <a
                       href={attachment.url}
                       download={attachment.name}

@@ -9,20 +9,21 @@ export default function Start() {
           گزارش های خود را به آسانی
           <span className="block">مدیریت کنید</span>
         </h1>
-        <Image
-          src="/imges/lines.png"
-          alt="مراحل راه‌اندازی حساب کاربری، تنظیم کارکنان و مدیریت گزارش‌ها"
-          width={280}
-          height={280}
-          className="h-auto w-full max-w-[400px]"
-        />
-        <Link
-          
-          href="/login"
-          className="flex h-[50px] w-[144px] items-center justify-center rounded-xl bg-white font-bold text-[#3F8EFC] transition hover:bg-blue-50 absolute right-70 bottom-32"
-        >
-          شروع کنید
-        </Link>
+        <div className="relative w-full max-w-[400px] pb-16">
+          <Image
+            src="/imges/lines.png"
+            alt="مراحل راه‌اندازی حساب کاربری، تنظیم کارکنان و مدیریت گزارش‌ها"
+            width={563}
+            height={565}
+            className="block h-auto w-full"
+          />
+          <Link
+            href="/login"
+            className="absolute bottom-0 right-0 flex h-[50px] w-[144px] items-center justify-center rounded-xl bg-white font-bold text-[#3F8EFC] transition hover:bg-blue-50"
+          >
+            شروع کنید
+          </Link>
+        </div>
       </section>
 
       <section className="flex min-h-[50vh] items-center justify-center bg-white px-6 py-8 md:min-h-screen">

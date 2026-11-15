@@ -30,6 +30,7 @@ import {
   type EmployeeReport,
   type EmployeeReportStatus,
 } from "@/lib/clientStore";
+import { api, downloadApiFile } from "@/lib/api";
 
 const statusInfo: Record<
   EmployeeReportStatus,
@@ -59,17 +60,46 @@ const statusInfo: Record<
 
 function useEmployeeReports() {
   const [reports, setReports] = useState<EmployeeReport[]>([]);
-  const [employeeId, setEmployeeId] = useState<number | null>(null);
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const session = readSession();
-    if (session?.role !== "employee") return;
+    if (session?.role !== "teacher") {
+      setIsLoading(false);
+      return;
+    }
     setEmployeeId(session.employeeId);
-    setReports(readEmployeeReports());
+    api<Record<string, unknown>[]>(`/report/teacher/${session.employeeId}?limit=100`)
+      .then((rows) => {
+        setLoadError("");
+        setReports([
+          ...readEmployeeReports().filter((item) => item.status === "draft" && item.employeeId === session.employeeId),
+          ...rows.map((row) => ({
+        id: String(row.id), employeeId: session.employeeId,
+        title: String(row.title ?? ""), content: String(row.text ?? ""),
+        createdAt: String(row.report_date ?? new Date().toISOString()),
+        status: (row.status === "draft" ? "draft" : row.status === "accept" ? "approved" : row.status === "comment" ? "rejected" : "pending") as EmployeeReportStatus,
+        serverBacked: true,
+        reviewNote: typeof row.comment_text === "string" ? row.comment_text : undefined,
+        reviewedAt: row.status === "pending" ? undefined : String(row.updated_at ?? ""),
+        attachment: row.file_name ? {
+          name: String(row.file_name),
+          size: row.file_size ? `${(Number(row.file_size) / (1024 * 1024)).toFixed(1)} MB` : "",
+          downloadEndpoint: row.file_path ? `/report/${String(row.id)}/file` : undefined,
+        } : undefined,
+          })),
+        ]);
+      })
+      .catch((cause) => setLoadError(cause instanceof Error ? cause.message : "بارگذاری گزارش‌ها ناموفق بود."))
+      .finally(() => setIsLoading(false));
   }, []);
 
   return {
     employeeId,
+    loadError,
+    isLoading,
     reports: useMemo(
       () =>
         reports
@@ -99,7 +129,7 @@ function reportDate(value: string) {
 }
 
 export function EmployeeDashboard() {
-  const { reports } = useEmployeeReports();
+  const { reports, loadError, isLoading } = useEmployeeReports();
   const pendingCount = reports.filter(
     (report) => report.status === "pending",
   ).length;
@@ -112,6 +142,7 @@ export function EmployeeDashboard() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5">
+      {loadError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</p>}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm text-slate-500">خوش آمدید</p>
@@ -160,6 +191,8 @@ export function EmployeeDashboard() {
           </div>
           <ReportRows reports={latestReports} />
         </section>
+      ) : isLoading ? (
+        <p className="border-t border-slate-200 py-12 text-center text-sm text-slate-500">در حال بارگذاری گزارش‌ها…</p>
       ) : (
         <section className="flex min-h-[330px] flex-col items-center justify-center border-t border-slate-200 px-4 text-center">
           <div className="mb-4 grid size-20 place-items-center rounded-full bg-blue-50 text-blue-600">
@@ -213,7 +246,7 @@ export function EmployeeReportList({
 }: {
   draftsOnly?: boolean;
 }) {
-  const { reports } = useEmployeeReports();
+  const { reports, loadError, isLoading } = useEmployeeReports();
   const items = draftsOnly
     ? reports.filter((report) => report.status === "draft")
     : reports.filter((report) => report.status !== "draft");
@@ -229,13 +262,16 @@ export function EmployeeReportList({
             {items.length.toLocaleString("fa-IR")} مورد
           </p>
         </div>
+        {loadError && <p role="alert" className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</p>}
         <Link
           href="/employee/reports/new"
           className="inline-flex h-9 items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 text-xs font-semibold text-blue-700 hover:bg-blue-50">
           <Plus size={15} /> گزارش جدید
         </Link>
       </div>
-      {items.length ? (
+      {isLoading ? (
+        <p className="border-t border-slate-200 py-12 text-center text-sm text-slate-500">در حال بارگذاری گزارش‌ها…</p>
+      ) : items.length ? (
         <ReportRows reports={items} />
       ) : (
         <div className="flex min-h-56 flex-col items-center justify-center border-t border-slate-200 text-center">
@@ -257,18 +293,22 @@ export function EmployeeReportList({
 }
 
 export function EmployeeReportPage({ reportId }: { reportId: string }) {
-  const { reports } = useEmployeeReports();
+  const { reports, loadError, isLoading } = useEmployeeReports();
   const report = reports.find((item) => item.id === reportId);
 
   if (!report) {
     return (
       <div className="mx-auto max-w-3xl py-16 text-center">
-        <p className="font-semibold text-slate-700">گزارش پیدا نشد.</p>
-        <Link
-          href="/employee/inbox"
-          className="mt-3 inline-block text-sm text-blue-700">
-          بازگشت به گزارش‌ها
-        </Link>
+        {isLoading && <p className="text-sm text-slate-500">در حال بارگذاری گزارش…</p>}
+        {loadError && <p role="alert" className="mb-3 text-sm text-red-600">{loadError}</p>}
+        {!isLoading && !loadError && (
+          <>
+            <p className="font-semibold text-slate-700">گزارش پیدا نشد.</p>
+            <Link href="/employee/inbox" className="mt-3 inline-block text-sm text-blue-700">
+              بازگشت به گزارش‌ها
+            </Link>
+          </>
+        )}
       </div>
     );
   }
@@ -325,7 +365,15 @@ export function EmployeeReportPage({ reportId }: { reportId: string }) {
               <span className="shrink-0 text-[10px] text-slate-500">
                 {report.attachment.size}
               </span>
-              {report.attachment.url && (
+              {report.attachment.downloadEndpoint ? (
+                <button
+                  type="button"
+                  onClick={() => void downloadApiFile(report.attachment!.downloadEndpoint!, report.attachment!.name)}
+                  aria-label="دانلود پیوست"
+                  className="mr-2 text-blue-700 hover:text-blue-900">
+                  <FileText size={16} />
+                </button>
+              ) : report.attachment.url && (
                 <a
                   href={report.attachment.url}
                   download={report.attachment.name}
@@ -399,28 +447,51 @@ export function EmployeeReportComposer() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const draftId = searchParams.get("draft");
-  const { employeeId, reports } = useEmployeeReports();
+  const { employeeId, reports, isLoading } = useEmployeeReports();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [attachment, setAttachment] = useState<EmployeeReport["attachment"]>();
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const draft = reports.find((report) => report.id === draftId);
-  const rejectedReport = reports.find(
-    (report) => report.id === draftId && report.status === "rejected",
-  );
 
   useEffect(() => {
     if (!draft) return;
     setTitle(draft.title);
     setContent(draft.content);
     setAttachment(draft.attachment);
+    setAttachmentFile(null);
+    if (draft.attachment?.url?.startsWith("data:")) {
+      void fetch(draft.attachment.url)
+        .then((response) => response.blob())
+        .then((blob) => setAttachmentFile(new File([blob], draft.attachment!.name, { type: blob.type })));
+    }
   }, [draft]);
+
+  if (draftId && isLoading) {
+    return <p className="py-16 text-center text-sm text-slate-500">در حال بارگذاری پیش‌نویس…</p>;
+  }
 
   const selectAttachment = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      setError("حجم پیوست نباید بیشتر از ۲ مگابایت باشد.");
+    if (file.size > 15 * 1024 * 1024) {
+      setError("حجم پیوست نباید بیشتر از ۱۵ مگابایت باشد.");
+      event.currentTarget.value = "";
+      return;
+    }
+    const allowedTypes = [
+      "application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif", "image/tiff", "text/plain", "text/csv", "text/markdown", "text/rtf", "application/rtf", "application/json",
+      "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/vnd.oasis.opendocument.text", "application/vnd.oasis.opendocument.spreadsheet", "application/vnd.oasis.opendocument.presentation",
+      "application/zip", "application/x-zip-compressed", "application/x-7z-compressed", "application/vnd.rar", "application/x-rar-compressed", "application/gzip", "application/x-gzip", "application/x-tar", "application/x-bzip2",
+    ];
+    const allowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".txt", ".csv", ".md", ".rtf", ".json", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".zip", ".7z", ".rar", ".gz", ".tar", ".bz2"];
+    const extension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
+      setError("فرمت پیوست پشتیبانی نمی‌شود.");
       event.currentTarget.value = "";
       return;
     }
@@ -432,6 +503,7 @@ export function EmployeeReportComposer() {
           size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
           url: reader.result,
         });
+        setAttachmentFile(file);
         setError("");
       }
     };
@@ -439,35 +511,51 @@ export function EmployeeReportComposer() {
     reader.readAsDataURL(file);
   };
 
-  const save = (status: "pending" | "draft") => {
+  const save = async (status: "pending" | "draft") => {
     if (!employeeId) return;
     if (!title.trim() || !content.trim()) {
       setError("عنوان و متن گزارش را وارد کنید.");
       return;
     }
 
-    const now = new Date().toISOString();
-    const nextReport: EmployeeReport = {
-      id: draft?.id ?? crypto.randomUUID(),
-      employeeId,
+    const body: Record<string, string> = {
       title: title.trim(),
-      content: content.trim(),
-      createdAt: draft?.createdAt ?? now,
+      text: content.trim(),
       status,
-      attachment,
-      ...(status === "pending" && rejectedReport
-        ? { reviewedAt: undefined, reviewNote: undefined }
-        : {}),
     };
-    const savedReports = readEmployeeReports().filter(
-      (report) => report.id !== nextReport.id,
-    );
-    writeEmployeeReports([nextReport, ...savedReports]);
-    router.push(
-      status === "draft"
-        ? "/employee/drafts"
-        : `/employee/reports/${nextReport.id}`,
-    );
+    if (attachment?.name) body.file_name = attachment.name;
+    if (draft?.serverBacked && !attachment) body.remove_file = "true";
+    try {
+      let reportId = draft?.id;
+      const method = draft?.serverBacked ? "PATCH" : "POST";
+      const endpoint = draft?.serverBacked ? `/report/${draft.id}` : "/report";
+      let requestBody: BodyInit = JSON.stringify(body);
+      if (attachmentFile) {
+        const form = new FormData();
+        for (const [key, value] of Object.entries(body)) form.append(key, value);
+        form.append("file", attachmentFile);
+        requestBody = form;
+      }
+      if (draft?.serverBacked) {
+        await api(endpoint, { method, body: requestBody });
+      } else {
+        const created = await api<Record<string, unknown>>(endpoint, { method, body: requestBody });
+        reportId = String(created.id);
+      }
+
+      if (draft && !draft.serverBacked) {
+        writeEmployeeReports(
+          readEmployeeReports().filter((item) => item.id !== draft.id),
+        );
+      }
+      if (status === "pending") {
+        router.push(`/employee/reports/${String(reportId)}`);
+      } else {
+        router.push("/employee/drafts");
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : status === "draft" ? "ذخیره پیش‌نویس ناموفق بود." : "ارسال گزارش ناموفق بود.");
+    }
   };
 
   return (
@@ -512,10 +600,11 @@ export function EmployeeReportComposer() {
         <div>
           <label className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 text-xs text-slate-600 hover:bg-blue-50">
             <span className="flex items-center gap-2">
-              <Upload size={16} /> فایل را انتخاب کنید (حداکثر ۲ مگابایت)
+              <Upload size={16} /> پیوست گزارش (PDF، Word، Excel، PowerPoint و فایل‌های دیگر؛ حداکثر ۱۵ مگابایت)
             </span>
             <input
               type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff,.txt,.csv,.md,.rtf,.json,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.zip,.7z,.rar,.gz,.tar,.bz2"
               onChange={selectAttachment}
               className="sr-only"
             />
@@ -530,7 +619,11 @@ export function EmployeeReportComposer() {
               <button
                 type="button"
                 aria-label="حذف پیوست"
-                onClick={() => setAttachment(undefined)}
+                onClick={() => {
+                  setAttachment(undefined);
+                  setAttachmentFile(null);
+                  setError("");
+                }}
                 className="mr-2 text-red-600">
                 <X size={16} />
               </button>
@@ -577,52 +670,176 @@ export function EmployeeReportComposer() {
   );
 }
 
+type AssignedTask = {
+  id: string;
+  title: string;
+  description?: string | null;
+  start_date?: string | null;
+  deadline?: string | null;
+  created_at?: string | null;
+  assignments: Array<{
+    status: "pending" | "in_progress" | "completed";
+    completed_at?: string | null;
+    response?: string | null;
+    responded_at?: string | null;
+  }>;
+};
+
 export function EmployeeTasksPage() {
-  const { reports } = useEmployeeReports();
-  const activity = reports
-    .filter((report) => report.status !== "draft")
-    .slice(0, 8);
+  const [tasks, setTasks] = useState<AssignedTask[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [responses, setResponses] = useState<Record<string, string>>({});
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [submittingTaskId, setSubmittingTaskId] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<AssignedTask[]>("/task?limit=100")
+      .then(setTasks)
+      .catch((cause) => setError(cause instanceof Error ? cause.message : "بارگذاری وظایف ناموفق بود."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const submitResponse = async (task: AssignedTask) => {
+    const response = (responses[task.id] ?? task.assignments[0]?.response ?? "").trim();
+    if (!response) {
+      setError("گزارش کار را بنویسید.");
+      return;
+    }
+    setError("");
+    setNotice("");
+    setSubmittingTaskId(task.id);
+    try {
+      const assignment = await api<{ response: string; responded_at: string; completed_at: string | null }>(`/task/${task.id}/response`, {
+        method: "PATCH",
+        body: JSON.stringify({ response }),
+      });
+      setTasks((current) => current.map((item) => item.id === task.id
+        ? { ...item, assignments: [{ ...item.assignments[0], response: assignment.response, responded_at: assignment.responded_at, status: "completed", completed_at: assignment.completed_at }] }
+        : item));
+      setResponses((current) => ({ ...current, [task.id]: assignment.response }));
+      setActiveTaskId(null);
+      setNotice("پاسخ فعالیت به‌صورت گزارش برای مدیر ارسال شد.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "ارسال گزارش کار ناموفق بود.");
+    } finally {
+      setSubmittingTaskId(null);
+    }
+  };
+
+  const today = new Date();
+  const weekStart = new Date(today);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 1) % 7));
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const weeklyTasks = tasks.filter((task) => {
+    const dateValue = task.deadline ?? task.start_date ?? task.created_at;
+    if (!dateValue) return true;
+    const date = new Date(dateValue);
+    return date >= weekStart && date < weekEnd;
+  });
+  const completedCount = weeklyTasks.filter((task) => task.assignments[0]?.status === "completed").length;
+  const inProgressCount = weeklyTasks.length - completedCount;
+  const completionPercent = weeklyTasks.length ? Math.round((completedCount / weeklyTasks.length) * 100) : 0;
+
+  const taskDateLabel = (task: AssignedTask) => {
+    const value = task.deadline ?? task.start_date;
+    if (!value) return "بدون موعد";
+    const date = value.length === 10 ? new Date(`${value}T12:00:00`) : new Date(value);
+    return `موعد: ${new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short" }).format(date)}`;
+  };
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <h2 className="mb-4 text-lg font-bold text-slate-900">
-        فعالیت‌های گزارش‌ها
-      </h2>
-      <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
-        {!activity.length ? (
-          <p className="py-10 text-center text-sm text-slate-500">
-            فعالیتی برای نمایش وجود ندارد.
-          </p>
-        ) : (
-          <ol className="space-y-0">
-            {activity.map((report) => {
-              const info = statusInfo[report.status];
-              const Icon = info.icon;
+    <div className="mx-auto w-full max-w-6xl space-y-4">
+      {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {notice && <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</p>}
+      {loading ? (
+        <p className="py-10 text-center text-sm text-slate-500">در حال بارگذاری…</p>
+      ) : (
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_246px]">
+          <section className="space-y-3">
+            {tasks.length ? tasks.map((task) => {
+              const assignment = task.assignments[0];
+              const completed = assignment?.status === "completed";
+              const isActive = activeTaskId === task.id;
               return (
-                <li
-                  key={report.id}
-                  className="flex gap-3 border-r-2 border-slate-200 pb-6 pr-4 last:border-transparent last:pb-0">
-                  <span
-                    className={`-mr-[25px] grid size-6 shrink-0 place-items-center rounded-full ${info.className}`}>
-                    <Icon size={13} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/employee/reports/${report.id}`}
-                      className="truncate text-sm font-semibold text-slate-800 hover:text-blue-700">
-                      {report.title}
-                    </Link>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {info.label} ·{" "}
-                      {reportDate(report.reviewedAt ?? report.createdAt)}
-                    </p>
+                <article key={task.id} className="rounded-lg border border-slate-200 bg-white p-3 sm:px-4 sm:py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      {completed ? (
+                        <CircleCheck size={19} className="mt-0.5 shrink-0 fill-green-600 text-white" />
+                      ) : (
+                        <span aria-hidden className="mt-0.5 size-[19px] shrink-0 rounded border border-slate-300 bg-white" />
+                      )}
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-semibold text-slate-800">{task.title}</h3>
+                        <p className="mt-1 text-[11px] text-slate-400">{taskDateLabel(task)}</p>
+                      </div>
+                    </div>
+                    {completed ? (
+                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-[11px] font-semibold text-green-700">
+                        <i className="size-1.5 rounded-full bg-green-600" /> انجام شده
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-expanded={isActive}
+                        onClick={() => setActiveTaskId(isActive ? null : task.id)}
+                        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-slate-200 px-3 text-xs font-medium text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+                        <Send size={13} /> ارسال گزارش کار
+                      </button>
+                    )}
                   </div>
-                </li>
+                  {task.description && <p className="mt-2 pr-8 text-xs leading-5 text-slate-500">{task.description}</p>}
+                  {isActive && (
+                    <div className="mt-3 border-t border-slate-100 pt-3">
+                      {assignment?.responded_at && <p className="mb-2 text-[11px] text-slate-500">گزارش قبلی ثبت شده است؛ متن را ویرایش و دوباره بفرستید.</p>}
+                      <label className="grid gap-2 text-xs font-medium text-slate-700">
+                        گزارش کار
+                        <textarea
+                          value={responses[task.id] ?? assignment?.response ?? ""}
+                          onChange={(event) => setResponses((current) => ({ ...current, [task.id]: event.target.value }))}
+                          maxLength={20000}
+                          rows={3}
+                          placeholder="کار انجام‌شده را شرح دهید…"
+                          className="resize-y rounded-md border border-slate-200 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-500"
+                        />
+                      </label>
+                      <div className="mt-2 flex justify-start gap-2">
+                        <button type="button" onClick={() => setActiveTaskId(null)} className="h-9 rounded-md border border-slate-200 px-3 text-xs text-slate-600 hover:bg-slate-50">لغو</button>
+                        <button
+                          type="button"
+                          disabled={submittingTaskId === task.id}
+                          onClick={() => void submitResponse(task)}
+                          className="inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+                          <Send size={13} /> {submittingTaskId === task.id ? "در حال ارسال…" : "ارسال برای مدیر"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </article>
               );
-            })}
-          </ol>
-        )}
-      </div>
+            }) : (
+              <p className="rounded-lg border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">فعالیتی برای شما ثبت نشده است.</p>
+            )}
+          </section>
+
+          <aside className="rounded-lg border border-slate-200 bg-white p-4">
+            <h3 className="text-sm font-bold text-slate-800">خلاصه این هفته</h3>
+            <div className="mt-4 space-y-3 text-xs text-slate-500">
+              <div className="flex items-center justify-between gap-3"><span>کل فعالیت‌ها</span><b className="text-slate-800">{weeklyTasks.length.toLocaleString("fa-IR")}</b></div>
+              <div className="flex items-center justify-between gap-3"><span>انجام شده</span><b className="text-slate-800">{completedCount.toLocaleString("fa-IR")}</b></div>
+              <div className="flex items-center justify-between gap-3"><span>در جریان</span><b className="text-slate-800">{inProgressCount.toLocaleString("fa-IR")}</b></div>
+            </div>
+            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${completionPercent}%` }} />
+            </div>
+            <p className="mt-2 text-[10px] text-slate-400">{completionPercent.toLocaleString("fa-IR")}٪ تکمیل شده</p>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

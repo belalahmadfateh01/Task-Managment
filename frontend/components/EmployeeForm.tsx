@@ -14,7 +14,9 @@ import type { Employee } from "@/lib/types";
 
 interface EmployeeFormProps {
   onBack: () => void;
-  onAdd: (employee: Omit<Employee, "id">) => boolean;
+  onAdd: (
+    employee: Omit<Employee, "id"> & { avatarFile?: File; firstName: string; lastName: string },
+  ) => boolean | string | Promise<boolean | string>;
 }
 
 type FieldErrors = Partial<
@@ -33,6 +35,7 @@ export default function EmployeeForm({ onBack, onAdd }: EmployeeFormProps) {
   const [address, setAddress] = useState("");
   const [password, setPassword] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File>();
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState("");
 
@@ -53,6 +56,7 @@ export default function EmployeeForm({ onBack, onAdd }: EmployeeFormProps) {
     reader.onload = () => {
       if (typeof reader.result === "string") {
         setPhoto(reader.result);
+        setPhotoFile(file);
         setFormError("");
       }
     };
@@ -61,7 +65,7 @@ export default function EmployeeForm({ onBack, onAdd }: EmployeeFormProps) {
     reader.readAsDataURL(file);
   };
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors: FieldErrors = {};
     if (!name.trim()) nextErrors.name = "وارد کردن نام الزامی است.";
@@ -70,21 +74,25 @@ export default function EmployeeForm({ onBack, onAdd }: EmployeeFormProps) {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       nextErrors.email = "ایمیل واردشده معتبر نیست.";
     }
-    if (!password.trim())
-      nextErrors.password = "وارد کردن رمز عبور الزامی است.";
+    if (password.trim().length < 8)
+      nextErrors.password = "رمز عبور باید دست‌کم ۸ نویسه باشد.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
 
-    const added = onAdd({
+    const result = await onAdd({
       name: `${name.trim()} ${lastName.trim()}`,
+      firstName: name.trim(),
+      lastName: lastName.trim(),
       email: email.trim().toLowerCase(),
       password,
       avatar: photo ?? "/imges/Photo.png",
+      avatarFile: photoFile,
       joinedAt: new Date().toISOString().slice(0, 10),
       phone: phone.trim() || undefined,
       address: address.trim() || undefined,
     });
-    if (!added) setFormError("این ایمیل قبلاً برای کارمند دیگری ثبت شده است.");
+    if (typeof result === "string") setFormError(result);
+    else if (!result) setFormError("افزودن کارمند ناموفق بود.");
   };
 
   const field = (
@@ -169,6 +177,7 @@ export default function EmployeeForm({ onBack, onAdd }: EmployeeFormProps) {
               type="button"
               onClick={() => {
                 setPhoto(null);
+                setPhotoFile(undefined);
                 if (fileInput.current) fileInput.current.value = "";
               }}
               aria-label="حذف تصویر انتخاب‌شده"

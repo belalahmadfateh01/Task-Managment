@@ -1,12 +1,5 @@
-import React from 'react'
+import TasksView from "@/components/TasksView";
 
-function page() {
-  return (
-    <div>
-      this is tasks page
-    </div>
-  )
+export default function TasksPage() {
+  return <TasksView />;
 }
-
-export default page
-
