@@ -5,7 +5,15 @@ const createComment = async (reportId, employee, data) => {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
-        const report = await client.query("SELECT id, title FROM reports WHERE id = $1 FOR UPDATE", [reportId]);
+        const linkedTasks = await client.query(
+            `SELECT a.id, a.task_id, a.teacher_id, a.status, t.title AS task_title
+             FROM task_assignments a
+             JOIN tasks t ON t.id = a.task_id
+             WHERE a.response_report_id = $1
+             FOR UPDATE OF a`,
+            [reportId]
+        );
+        const report = await client.query("SELECT id, title, status FROM reports WHERE id = $1 FOR UPDATE", [reportId]);
         if (!report.rows[0]) throw new ApiError(404, "Report not found");
         const { rows } = await client.query(
             `INSERT INTO comments (id, text, report_id, admin_id)
@@ -13,6 +21,26 @@ const createComment = async (reportId, employee, data) => {
             [data.text, reportId, employee.id]
         );
         await client.query("UPDATE reports SET status = 'comment', admin_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", [employee.id, reportId]);
+        if (report.rows[0].status !== "comment") {
+            for (const assignment of linkedTasks.rows) {
+                if (assignment.status !== "completed") continue;
+                await client.query(
+                    `UPDATE task_assignments
+                     SET status = 'pending', completed_at = NULL
+                     WHERE id = $1`,
+                    [assignment.id]
+                );
+                await client.query(
+                    `INSERT INTO notifications (employee_id, type, title, body, href, task_id)
+                     VALUES ($1, 'task_reopened', 'فعالیت برای اصلاح بازگشایی شد', $2, '/employee/tasks', $3)`,
+                    [
+                        assignment.teacher_id,
+                        `گزارش فعالیت «${assignment.task_title}» رد شد. لطفاً اصلاحات لازم را انجام دهید و دوباره ارسال کنید.`,
+                        assignment.task_id,
+                    ]
+                );
+            }
+        }
         await client.query(`INSERT INTO notifications (employee_id, type, title, body, href, report_id)
             SELECT teacher_id, 'report_feedback', 'برای گزارش شما بازخورد ثبت شد', $1, $2, $3
             FROM reports WHERE id = $3`,

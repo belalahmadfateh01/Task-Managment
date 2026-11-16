@@ -5,12 +5,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
-  Check,
   ChevronLeft,
-  Clock3,
   Pencil,
+  UserRound,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { apiAllPages } from "@/lib/api";
 import { formatJalali, fromInputDate } from "@/lib/jalali";
 import type { Employee } from "@/lib/types";
 import ProfileEditor, { type EditableEmployeeProfile } from "@/components/ProfileEditor";
@@ -40,6 +39,7 @@ export default function EmployeeDetails({
   const joined = fromInputDate(employee.joinedAt);
   const info = [
     ["نام و تخلص", employee.name],
+    ["نام کاربری", employee.username || employee.email.split("@")[0]],
     ["ایمیل", employee.email],
     ["شماره تلفن", employee.phone || "ثبت نشده"],
     ["آدرس", employee.address || "ثبت نشده"],
@@ -51,7 +51,7 @@ export default function EmployeeDetails({
     setReportsLoading(true);
     setReportsError("");
     setReports([]);
-    api<Record<string, unknown>[]>(`/report/teacher/${employee.id}?limit=100`)
+    apiAllPages<Record<string, unknown>>(`/report/teacher/${employee.id}`)
       .then((rows) => setReports(rows
         .filter((row) => row.status !== "draft")
         .map((row) => {
@@ -59,7 +59,7 @@ export default function EmployeeDetails({
           return {
             id: String(row.id),
             title: String(row.title ?? ""),
-            status: row.status === "accept" ? "تأیید شده" : row.status === "comment" ? "بازخورد داده شد" : "در انتظار بررسی",
+            status: row.status === "accept" ? "تأیید شده" : row.status === "comment" ? "بازخورد شده" : "دریافت شده",
             date: new Intl.DateTimeFormat("fa-IR-u-ca-persian").format(created),
             time: new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit" }).format(created),
           };
@@ -69,7 +69,7 @@ export default function EmployeeDetails({
   }, [employee.id]);
 
   return (
-    <div className="mx-auto w-full max-w-280">
+    <div className="w-full">
       <div className="mb-5 flex items-center justify-between">
         <button
           type="button"
@@ -82,30 +82,27 @@ export default function EmployeeDetails({
 
       <div
         dir="ltr"
-        className="grid min-h-[min(650px,calc(100vh-220px))] gap-3 md:h-[min(650px,calc(100vh-180px))] md:grid-cols-[minmax(0,1.35fr)_minmax(330px,1fr)]">
+        className="grid min-h-[680px] gap-4 lg:h-[min(920px,calc(100vh-190px))] lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,1fr)]">
         <section
           dir="rtl"
-          className="flex min-h-0 flex-col rounded-lg border border-blue-300 bg-white p-5 sm:p-6">
-          <div className="flex items-start justify-between border-b border-line pb-4">
-            <div>
-              <h2 className="text-base font-semibold text-slate-800">
+          className="flex min-h-[460px] flex-col rounded-2xl border-2 border-blue-500 bg-white p-5 sm:p-7">
+          <div className="border-b-2 border-dotted border-blue-300 pb-7 text-right">
+            <div className="me-auto max-w-xs">
+              <h2 className="text-lg font-semibold text-slate-800 sm:text-xl">
                 گزارش‌های اخیر
               </h2>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-2 text-xs leading-6 text-slate-500 sm:text-sm">
                 آخرین وضعیت گزارش‌های دریافت‌شده و بررسی‌شده
               </p>
             </div>
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-              {reports.length.toLocaleString("fa-IR")} مورد
-            </span>
           </div>
-          <div className="mt-5 hidden grid-cols-[minmax(0,1fr)_auto_auto_24px] items-center gap-3 px-1 text-xs text-slate-400 sm:grid">
+          <div className="mt-3 hidden grid-cols-[minmax(0,1fr)_minmax(105px,auto)_minmax(180px,auto)_24px] items-center gap-3 px-1 text-xs text-slate-400 sm:grid">
             <span>عنوان گزارش</span>
             <span>وضعیت</span>
-            <span>تاریخ</span>
+            <span dir="ltr" className="text-left">تاریخ</span>
             <span />
           </div>
-          <div className="mt-2 min-h-0 divide-y divide-slate-100 overflow-y-auto">
+          <div className="mt-1 min-h-0 divide-y divide-slate-100 overflow-y-auto">
             {reportsError ? (
               <p role="alert" className="py-8 text-center text-xs text-red-600">{reportsError}</p>
             ) : reportsLoading ? (
@@ -113,87 +110,81 @@ export default function EmployeeDetails({
             ) : reports.length === 0 ? (
               <p className="py-8 text-center text-xs text-slate-500">گزارشی برای این کارمند ثبت نشده است.</p>
             ) : reports.map((report) => {
-              const isPending = report.status === "در انتظار بررسی";
+              const isFeedback = report.status === "بازخورد شده";
+              const isPending = report.status === "دریافت شده";
               return (
                 <Link
                   key={report.id}
                   href={`/inbox/${report.id}`}
-                  className="grid min-h-15.5 grid-cols-[minmax(0,1fr)_auto_20px] items-center gap-x-2 gap-y-1 px-1 py-2 text-[10px] hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_auto_auto_24px] sm:gap-3 sm:py-0 sm:text-xs">
+                  className="grid min-h-15.5 grid-cols-[minmax(0,1fr)_auto_20px] items-center gap-x-2 gap-y-1 px-1 py-2 text-[10px] hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_minmax(105px,auto)_minmax(180px,auto)_24px] sm:gap-3 sm:py-0 sm:text-xs">
                   <span className="min-w-0 truncate text-slate-700">
                     {report.title}
                   </span>
                   <span
                     className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[9px] font-medium sm:px-3 sm:text-[10px] ${
-                      isPending
-                        ? "bg-amber-50 text-amber-700"
-                        : report.status === "تأیید شده" ? "bg-emerald-100 text-emerald-700" : "bg-indigo-50 text-indigo-700"
+                      isFeedback
+                        ? "bg-amber-100 text-amber-700"
+                        : isPending ? "bg-indigo-50 text-indigo-700" : "bg-emerald-100 text-emerald-700"
                     }`}>
                     {report.status}
                   </span>
                   <span
-                    className="col-start-1 row-start-2 text-[9px] text-slate-500 sm:col-auto sm:row-auto sm:whitespace-nowrap sm:text-xs"
+                    className="col-start-1 row-start-2 text-left text-[9px] text-slate-500 sm:col-start-3 sm:row-start-1 sm:whitespace-nowrap sm:text-xs"
                     dir="ltr">
                     {report.date} - {report.time}
                   </span>
-                  <span className="col-start-3 row-span-2 text-slate-400 sm:row-auto">
+                  <span className="col-start-3 row-span-2 grid place-items-center text-slate-400 sm:col-start-4 sm:row-start-1 sm:row-span-1">
                     <ChevronLeft size={15} />
                   </span>
                 </Link>
               );
             })}
           </div>
-          <div className="mt-4 flex items-center gap-2 border-t border-line pt-4 text-xs text-slate-500">
-            <Clock3 size={15} /> به‌روزرسانی‌شده در روز جاری
-          </div>
+          <div className="mt-4 border-t-2 border-dotted border-blue-300" />
         </section>
 
         <section
           dir="rtl"
-          className="flex flex-col overflow-y-auto rounded-lg border border-blue-300 bg-white p-4 sm:p-5">
-          <div className="relative mx-auto mb-6 mt-2 grid size-36 place-items-center">
+          className="flex min-h-[600px] flex-col overflow-y-auto rounded-2xl border-2 border-blue-500 bg-white p-5 sm:p-7">
+          <div className="relative mx-auto mt-8 grid size-48 shrink-0 place-items-center sm:size-56 xl:size-64">
             <Image
               src={employee.avatar}
               alt={`تصویر ${employee.name}`}
               fill
-              sizes="144px"
+              sizes="(min-width: 1280px) 256px, 224px"
               unoptimized
-              className="rounded-lg border border-blue-300 object-cover"
+              className="rounded-xl border-2 border-blue-400 object-cover"
             />
             <button
               type="button"
               onClick={() => setProfileEditorOpen(true)}
               aria-label="تغییر تصویر پروفایل"
               title="تغییر تصویر پروفایل"
-              className="absolute -bottom-2 -right-2 grid size-8 place-items-center rounded-full bg-brand text-white shadow-sm hover:bg-brand-deep">
+              className="absolute -bottom-3 -right-3 grid size-12 place-items-center rounded-full border-2 border-white bg-brand text-white shadow-sm hover:bg-brand-deep">
               <Pencil size={15} />
             </button>
           </div>
-          <div className="mt-auto overflow-hidden rounded-lg border border-blue-500">
-            <div className="flex items-center justify-between bg-blue-50 px-3 py-2.5">
-              <h2 className="font-semibold text-slate-800">مشخصات کارمند</h2>
-              <button type="button" onClick={() => setProfileEditorOpen(true)} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100">
-                <Pencil size={14} /> ویرایش پروفایل
+          <div className="mt-auto overflow-hidden rounded-xl border-2 border-blue-500">
+            <div className="flex items-center justify-between border-b-2 border-blue-500 bg-blue-50 px-3 py-2.5 sm:px-4">
+              <h2 className="text-base font-semibold text-slate-800 sm:text-lg">مشخصات کارمند</h2>
+              <button type="button" onClick={() => setProfileEditorOpen(true)} aria-label="ویرایش پروفایل کارمند" title="ویرایش پروفایل" className="relative grid size-10 place-items-center rounded-full bg-brand text-white hover:bg-brand-deep">
+                <UserRound size={20} />
+                <Pencil size={11} className="absolute bottom-1.5 left-1.5" />
               </button>
             </div>
             <dl>
               {info.map(([label, value], index) => (
                 <div
                   key={label}
-                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-xs sm:text-sm ${index < info.length - 1 ? "border-b border-dashed border-blue-400" : ""}`}>
+                  className={`grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-sm sm:min-h-[68px] sm:px-4 sm:text-base ${index < info.length - 1 ? "border-b-2 border-dashed border-blue-400" : ""}`}>
                   <dt className="text-blue-700">{label}</dt>
                   <dd
-                    className="min-w-0 truncate text-left font-medium text-slate-800"
-                    dir={label === "ایمیل" || label === "شماره تلفن" ? "ltr" : undefined}>
+                    className="min-w-0 truncate text-left font-semibold text-blue-700"
+                    dir={label === "ایمیل" || label === "شماره تلفن" || label === "نام کاربری" ? "ltr" : undefined}>
                     {value}
                   </dd>
                 </div>
               ))}
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-dashed border-blue-400 px-3 py-2.5 text-xs sm:text-sm">
-                <dt className="text-blue-700">وضعیت حساب</dt>
-                <dd className="inline-flex items-center gap-1 font-medium text-emerald-700">
-                  <Check size={14} /> فعال
-                </dd>
-              </div>
             </dl>
           </div>
         </section>

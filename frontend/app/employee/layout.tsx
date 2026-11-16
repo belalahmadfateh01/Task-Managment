@@ -6,23 +6,20 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays,
   CheckSquare,
-  ClipboardList,
-  FilePlus2,
   House,
-  LogOut,
   PenLine,
+  Plus,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { clearSession, readSession } from "@/lib/clientStore";
 import { api, apiAssetUrl } from "@/lib/api";
 import type { Employee } from "@/lib/types";
-import { formatJalali, formatTime } from "@/lib/jalali";
+import { formatClockTime, formatJalali } from "@/lib/jalali";
 import NotificationBell from "@/components/NotificationBell";
 import ProfileEditor from "@/components/ProfileEditor";
 
 const navigation = [
   { label: "صفحه اصلی", href: "/employee/dashboard", icon: House },
-  { label: "گزارش‌های من", href: "/employee/inbox", icon: ClipboardList },
   { label: "فعالیت‌ها", href: "/employee/tasks", icon: CheckSquare },
   { label: "پیش‌نویس‌ها", href: "/employee/drafts", icon: PenLine },
 ];
@@ -67,7 +64,7 @@ export default function EmployeeLayout({
 
   useEffect(() => {
     setNow(new Date());
-    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    const timer = window.setInterval(() => setNow(new Date()), 1_000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -76,14 +73,12 @@ export default function EmployeeLayout({
   const pageTitle = pathname.startsWith("/employee/reports/new")
     ? "گزارش جدید"
     : pathname.startsWith("/employee/reports/")
-      ? "گزارش‌های من"
-      : pathname.startsWith("/employee/inbox")
-        ? "گزارش‌های من"
-        : pathname.startsWith("/employee/tasks")
-          ? "فعالیت‌ها"
-          : pathname.startsWith("/employee/drafts")
-            ? "پیش‌نویس‌ها"
-            : "نمای کلی";
+      ? "جزئیات گزارش"
+      : pathname.startsWith("/employee/tasks")
+        ? "فعالیت‌ها"
+        : pathname.startsWith("/employee/drafts")
+          ? "پیش‌نویس‌ها"
+          : "صندوق ارسالی";
   const pageDescription = pathname.startsWith("/employee/tasks")
     ? "کارهای تعیین‌شده برای شما"
     : `${employee.name}، فضای کاری شما`;
@@ -110,7 +105,7 @@ export default function EmployeeLayout({
                 href="/employee/reports/new"
                 title="گزارش جدید"
                 className="flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-2 text-sm font-semibold text-brand-deep hover:bg-blue-50 max-xl:mx-auto max-xl:w-11 max-xl:px-0">
-                <FilePlus2 size={17} />
+                <Plus size={17} />
                 <span className="max-xl:hidden">گزارش جدید</span>
               </Link>
             </div>
@@ -148,25 +143,10 @@ export default function EmployeeLayout({
               <div className="hidden items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 sm:flex">
                 <CalendarDays size={15} />
                 <span>{now ? formatJalali(now) : "—"}</span>
-                <span className="text-blue-600">{now ? formatTime(now) : ""}</span>
+                <span className="text-blue-600">{now ? formatClockTime(now) : ""}</span>
               </div>
               <NotificationBell />
               <ProfileEditor />
-              <button
-                type="button"
-                onClick={() => {
-                  void api("/employee/logout", { method: "POST" })
-                    .catch(() => {})
-                    .finally(() => {
-                      clearSession();
-                      router.replace("/login");
-                    });
-                }}
-                aria-label="خروج از حساب"
-                title="خروج از حساب"
-                className="grid size-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-red-600">
-                <LogOut size={17} />
-              </button>
             </div>
           </header>
           <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">

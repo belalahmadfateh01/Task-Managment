@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { ChevronDown, Paperclip, Plus, Trash2, Upload, X } from "lucide-react";
+import { api, apiAllPages, downloadApiFile } from "@/lib/api";
 import Dialog from "@/components/Dialog";
 
 type EmployeeRow = {
@@ -27,23 +27,32 @@ type Task = {
   description?: string | null;
   start_date?: string | null;
   deadline?: string | null;
+  file_name?: string | null;
+  file_path?: string | null;
+  file_size?: number | string | null;
   assignments: Assignment[];
 };
 
 export default function TasksView() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [employeeLoadError, setEmployeeLoadError] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [removeExistingFile, setRemoveExistingFile] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
-  const teachers = employees.filter((employee) => employee.role === "teacher");
+  // The admin-only /employee endpoint already returns teachers only.
+  const teachers = employees;
 
   const resetForm = () => {
     setTaskToEdit(null);
@@ -52,23 +61,37 @@ export default function TasksView() {
     setDescription("");
     setStartDate("");
     setDeadline("");
+    setAttachmentFile(null);
+    setRemoveExistingFile(false);
+    setFormOpen(false);
     setError("");
   };
 
   const load = async () => {
     setError("");
-    try {
-      const [taskRows, employeeRows] = await Promise.all([
-        api<Task[]>("/task?limit=100"),
-        api<EmployeeRow[]>("/employee?limit=100"),
-      ]);
-      setTasks(taskRows);
-      setEmployees(employeeRows);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "بارگذاری وظایف ناموفق بود.");
-    } finally {
-      setLoading(false);
+    setLoading(true);
+    setEmployeesLoading(true);
+    setEmployeeLoadError("");
+    const [taskResult, employeeResult] = await Promise.allSettled([
+      apiAllPages<Task>("/task"),
+      apiAllPages<EmployeeRow>("/employee"),
+    ] as const);
+    const errors: string[] = [];
+    if (taskResult.status === "fulfilled") {
+      setTasks(taskResult.value);
+    } else {
+      errors.push(taskResult.reason instanceof Error ? taskResult.reason.message : "بارگذاری وظایف ناموفق بود.");
     }
+    if (employeeResult.status === "fulfilled") {
+      setEmployees(employeeResult.value);
+    } else {
+      const message = employeeResult.reason instanceof Error ? employeeResult.reason.message : "بارگذاری کارمندان ناموفق بود.";
+      setEmployeeLoadError(message);
+      errors.push(message);
+    }
+    setError(errors.join(" "));
+    setLoading(false);
+    setEmployeesLoading(false);
   };
 
   useEffect(() => {
@@ -94,14 +117,24 @@ export default function TasksView() {
         start_date: startDate || null,
         deadline: deadline || null,
       };
+      let body: BodyInit;
       if (taskToEdit) {
-        await api<Task>(`/task/${taskToEdit.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+        body = JSON.stringify(payload);
       } else {
-        await api<Task>("/task", {
-          method: "POST",
-          body: JSON.stringify({ ...payload, teacher_ids: [teacherId] }),
-        });
+        body = JSON.stringify({ ...payload, teacher_ids: [teacherId] });
       }
+      if (attachmentFile || removeExistingFile) {
+        const form = new FormData();
+        for (const [key, value] of Object.entries(payload)) form.append(key, value ?? "");
+        if (!taskToEdit) form.append("teacher_ids", JSON.stringify([teacherId]));
+        if (attachmentFile) form.append("file", attachmentFile);
+        if (taskToEdit && removeExistingFile) form.append("remove_file", "true");
+        body = form;
+      }
+      await api<Task>(taskToEdit ? `/task/${taskToEdit.id}` : "/task", {
+        method: taskToEdit ? "PATCH" : "POST",
+        body,
+      });
       resetForm();
       await load();
     } catch (cause) {
@@ -109,6 +142,26 @@ export default function TasksView() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const selectAttachment = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      setError("حجم پیوست نباید بیشتر از ۱۵ مگابایت باشد.");
+      event.currentTarget.value = "";
+      return;
+    }
+    const allowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".txt", ".csv", ".md", ".rtf", ".json", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".zip", ".7z", ".rar", ".gz", ".tar", ".bz2"];
+    const extension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    if (!allowedExtensions.includes(extension)) {
+      setError("فرمت پیوست پشتیبانی نمی‌شود.");
+      event.currentTarget.value = "";
+      return;
+    }
+    setAttachmentFile(file);
+    setRemoveExistingFile(false);
+    setError("");
   };
 
   const removeTask = async (id: string) => {
@@ -128,6 +181,18 @@ export default function TasksView() {
           {error}
         </p>
       )}
+      {!taskToEdit && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            aria-expanded={formOpen}
+            onClick={() => formOpen ? resetForm() : setFormOpen(true)}
+            className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-blue-700">
+            <Plus size={17} /> {formOpen ? "بستن فرم" : "ایجاد فعالیت"}
+          </button>
+        </div>
+      )}
+      {(formOpen || taskToEdit) && (
       <form onSubmit={createTask} className="mx-auto w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-white">
         <header className="flex items-center gap-3 border-b border-blue-100 px-5 py-4 sm:px-7">
           <span className="grid size-12 shrink-0 place-items-center rounded-full bg-blue-100 text-blue-700">
@@ -147,10 +212,12 @@ export default function TasksView() {
                   required
                   value={teacherId}
                   onChange={(event) => setTeacherId(event.target.value)}
-                  disabled={!teachers.length}
+                  disabled={employeesLoading || !teachers.length}
                   className="h-12 w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 pl-10 text-right text-sm font-normal text-slate-700 outline-none focus:border-blue-500 disabled:bg-slate-50"
                 >
-                  <option value="">{teachers.length ? "کارمند را انتخاب کنید" : "کارمندی برای واگذاری وجود ندارد"}</option>
+                  <option value="">
+                    {employeesLoading ? "در حال بارگذاری کارمندان…" : employeeLoadError ? "بارگذاری کارمندان ناموفق بود" : teachers.length ? "کارمند را انتخاب کنید" : "کارمندی برای واگذاری وجود ندارد"}
+                  </option>
                   {teachers.map((teacher) => (
                     <option key={teacher.id} value={teacher.id}>{teacher.f_name} {teacher.l_name}</option>
                   ))}
@@ -201,6 +268,50 @@ export default function TasksView() {
               />
             </label>
           </div>
+          <div className="grid gap-2 text-sm font-semibold text-slate-800">
+            <span>پیوست فایل</span>
+            <label className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 text-xs font-normal text-slate-600 hover:bg-blue-50">
+              <span className="flex items-center gap-2">
+                <Upload size={16} /> فایل وظیفه (PDF، Office، تصویر و فرمت‌های دیگر؛ حداکثر ۱۵ مگابایت)
+              </span>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff,.txt,.csv,.md,.rtf,.json,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.zip,.7z,.rar,.gz,.tar,.bz2"
+                onChange={selectAttachment}
+                className="sr-only"
+              />
+              <Paperclip size={16} />
+            </label>
+            {attachmentFile && (
+              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-xs font-normal">
+                <span className="min-w-0 truncate">{attachmentFile.name} <span className="text-slate-500">({(attachmentFile.size / (1024 * 1024)).toFixed(1)} MB)</span></span>
+                <button type="button" aria-label="حذف فایل انتخاب‌شده" onClick={() => setAttachmentFile(null)} className="mr-2 text-red-600">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+            {taskToEdit?.file_name && !attachmentFile && (
+              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-xs font-normal">
+                {removeExistingFile ? (
+                  <span className="text-slate-500">پیوست فعلی هنگام ذخیره حذف می‌شود.</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => taskToEdit.file_path && void downloadApiFile(`/task/${taskToEdit.id}/file`, taskToEdit.file_name!).catch((cause) => setError(cause instanceof Error ? cause.message : "بارگیری فایل ناموفق بود."))}
+                    className="inline-flex min-w-0 items-center gap-2 truncate text-blue-700 hover:underline">
+                    <Paperclip size={14} /> {taskToEdit.file_name} {taskToEdit.file_size ? `(${(Number(taskToEdit.file_size) / (1024 * 1024)).toFixed(1)} MB)` : ""}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-label={removeExistingFile ? "بازگرداندن پیوست" : "حذف پیوست"}
+                  onClick={() => setRemoveExistingFile((removed) => !removed)}
+                  className="mr-2 shrink-0 text-red-600">
+                  {removeExistingFile ? "بازگرداندن" : <X size={16} />}
+                </button>
+              </div>
+            )}
+          </div>
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={resetForm} className="h-11 min-w-32 rounded-md border border-slate-300 px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
               لغو
@@ -211,6 +322,7 @@ export default function TasksView() {
           </div>
         </div>
       </form>
+      )}
 
       <section className="space-y-3">
         <h2 className="font-bold text-slate-900">فعالیت‌های ثبت‌شده</h2>
@@ -221,6 +333,14 @@ export default function TasksView() {
             <div className="min-w-0">
               <h3 className="font-semibold text-slate-900">{task.title}</h3>
               {task.description && <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{task.description}</p>}
+              {task.file_name && task.file_path && (
+                <button
+                  type="button"
+                  onClick={() => task.file_path && void downloadApiFile(`/task/${task.id}/file`, task.file_name!).catch((cause) => setError(cause instanceof Error ? cause.message : "بارگیری فایل ناموفق بود."))}
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:underline">
+                  <Paperclip size={14} /> {task.file_name}
+                </button>
+              )}
               <p className="mt-2 text-xs text-slate-500">
                 {[task.start_date && `شروع: ${new Date(`${task.start_date.slice(0, 10)}T12:00:00`).toLocaleDateString("fa-IR")}`, task.deadline && `ختم: ${new Date(task.deadline).toLocaleDateString("fa-IR")}`].filter(Boolean).join(" · ") || "بدون تاریخ"}
                 {" · "}
@@ -246,6 +366,9 @@ export default function TasksView() {
                 setDescription(task.description ?? "");
                 setStartDate(task.start_date ? task.start_date.slice(0, 10) : "");
                 setDeadline(task.deadline ? task.deadline.slice(0, 10) : "");
+                setAttachmentFile(null);
+                setRemoveExistingFile(false);
+                setFormOpen(true);
                 setError("");
               }} aria-label={`ویرایش وظیفه ${task.title}`} className="rounded-md px-3 py-2 text-sm text-sky-700 hover:bg-sky-50">ویرایش</button>
               <button type="button" onClick={() => setTaskToDelete(task)} aria-label={`حذف وظیفه ${task.title}`} className="rounded-md p-2 text-red-600 hover:bg-red-50">

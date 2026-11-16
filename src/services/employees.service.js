@@ -125,7 +125,7 @@ const getAllEmployee = async queryData => {
     const { limit, offset } = Pagination(queryData);
     const { rows } = await pool.query(
         `SELECT id, f_name, l_name, user_name, email, phone, role, image, address, created_at, last_login_at
-         FROM employees WHERE role = 'teacher' ORDER BY f_name, l_name LIMIT $1 OFFSET $2`,
+         FROM employees WHERE role = 'teacher' ORDER BY f_name, l_name, id LIMIT $1 OFFSET $2`,
         [limit, offset]
     );
     return rows;

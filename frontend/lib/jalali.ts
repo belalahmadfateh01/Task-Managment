@@ -26,6 +26,14 @@ export function formatTime(date: Date, spaced = false): string {
   return spaced ? t.replace(":", " : ") : t;
 }
 
+export function formatClockTime(date: Date): string {
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 export function startOfDay(date: Date): Date {
   const x = new Date(date);
   x.setHours(0, 0, 0, 0);

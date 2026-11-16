@@ -1,9 +1,21 @@
 import pool from "../config/db.js";
 import ApiError from "../utils/ApiError.js";
 import { Pagination } from "../utils/apiFeature.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { unlink } from "node:fs/promises";
+
+const taskFilesDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../uploads/tasks");
+const removeStoredTaskFile = async filePath => {
+    if (!filePath) return;
+    const fullPath = path.resolve(taskFilesDirectory, path.basename(filePath));
+    if (!fullPath.startsWith(`${taskFilesDirectory}${path.sep}`)) return;
+    await unlink(fullPath).catch(() => {});
+};
 
 const taskSelect = `
-    SELECT t.id, t.title, t.description, t.start_date, t.deadline, t.created_by, t.created_at, t.file_name,
+    SELECT t.id, t.title, t.description, t.start_date, t.deadline, t.created_by, t.created_at,
+           t.file_name, t.file_path, t.file_size,
            creator.f_name AS created_by_f_name, creator.l_name AS created_by_l_name,
            COALESCE(
                json_agg(
@@ -50,9 +62,10 @@ const createTask = async (adminId, data) => {
         }
 
         const taskResult = await client.query(
-            `INSERT INTO tasks (title, description, start_date, deadline, created_by, file_name)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [data.title, data.description ?? null, data.start_date ?? null, data.deadline ?? null, adminId, data.file_name ?? null]
+            `INSERT INTO tasks (title, description, start_date, deadline, created_by, file_name, file_path, file_size)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [data.title, data.description ?? null, data.start_date ?? null, data.deadline ?? null, adminId,
+                data.file_name ?? null, data.file_path ?? null, data.file_size ?? null]
         );
         const task = taskResult.rows[0];
         await client.query(
@@ -82,7 +95,7 @@ const getTasks = async (employee, queryData) => {
         values.push(employee.id);
     }
     values.push(limit, offset);
-    query += ` GROUP BY t.id, creator.f_name, creator.l_name ORDER BY t.created_at DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
+    query += ` GROUP BY t.id, creator.f_name, creator.l_name ORDER BY t.created_at DESC, t.id DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
     const { rows } = await pool.query(query, values);
     if (employee.role === "teacher") {
         return rows.map(task => ({
@@ -208,13 +221,13 @@ const submitTaskResponse = async (taskId, teacherId, response) => {
 };
 
 const updateTask = async (id, data) => {
-    const allowedFields = ["title", "description", "start_date", "deadline", "file_name"];
+    const allowedFields = ["title", "description", "start_date", "deadline", "file_name", "file_path", "file_size"];
     const fields = Object.keys(data);
     if (fields.length === 0) throw new ApiError(400, "No fields provided for update");
     if (fields.some(field => !allowedFields.includes(field))) {
         throw new ApiError(400, "Invalid fields provided");
     }
-    const current = await pool.query("SELECT start_date, deadline FROM tasks WHERE id = $1", [id]);
+    const current = await pool.query("SELECT start_date, deadline, file_path FROM tasks WHERE id = $1", [id]);
     if (!current.rows[0]) throw new ApiError(404, "Task not found");
     const startDate = Object.hasOwn(data, "start_date") ? data.start_date : current.rows[0].start_date;
     const endDate = Object.hasOwn(data, "deadline") ? data.deadline : current.rows[0].deadline;
@@ -228,13 +241,30 @@ const updateTask = async (id, data) => {
         [...values, id]
     );
     if (rows.length === 0) throw new ApiError(404, "Task not found");
+    if (current.rows[0].file_path !== rows[0].file_path) {
+        await removeStoredTaskFile(current.rows[0].file_path);
+    }
     return rows[0];
 };
 
 const deleteTask = async id => {
-    const { rows } = await pool.query("DELETE FROM tasks WHERE id = $1 RETURNING id", [id]);
+    const { rows } = await pool.query("DELETE FROM tasks WHERE id = $1 RETURNING id, file_path", [id]);
     if (rows.length === 0) throw new ApiError(404, "Task not found");
+    await removeStoredTaskFile(rows[0].file_path);
     return rows[0];
 };
 
-export { createTask, getTasks, getTaskById, updateTaskStatus, submitTaskResponse, updateTask, deleteTask };
+const getTaskAttachment = async (id, employee) => {
+    const { rows } = await pool.query(
+        `SELECT t.file_name, t.file_path
+         FROM tasks t
+         LEFT JOIN task_assignments a ON a.task_id = t.id AND a.teacher_id = $3
+         WHERE t.id = $1 AND ($2 = 'admin' OR a.teacher_id IS NOT NULL)`,
+        [id, employee.role, employee.id]
+    );
+    if (!rows[0]) throw new ApiError(404, "Task not found");
+    if (!rows[0].file_path) throw new ApiError(404, "This task has no downloadable attachment");
+    return rows[0];
+};
+
+export { createTask, getTasks, getTaskById, updateTaskStatus, submitTaskResponse, updateTask, deleteTask, getTaskAttachment };
