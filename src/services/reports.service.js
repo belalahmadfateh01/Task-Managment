@@ -64,7 +64,7 @@ const getAllReport = async (queryData, employee) => {
         query += ` WHERE ${conditions.join(" AND ")}`
     }
     values.push(limit, offset);
-    query += ` ORDER BY r.report_date DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
+    query += ` ORDER BY r.report_date DESC, r.id DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
     const {rows} = await pool.query(query, values)
     return rows;
 };
@@ -142,7 +142,7 @@ const employeeReports = async (id, employee, queryData) => {
     }
 
     values.push(limit, offset);
-    query += ` ORDER BY r.report_date DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
+    query += ` ORDER BY r.report_date DESC, r.id DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
 
     const {rows} = await pool.query(query, values);
 
@@ -157,6 +157,16 @@ const updateReport = async (id, employee, data) => {
     let updatedReport;
     try {
         await client.query("BEGIN");
+        const linkedTasksResult = employee.role === "admin" && data.status === "comment"
+            ? await client.query(
+                `SELECT a.id, a.task_id, a.teacher_id, a.status, t.title AS task_title
+                 FROM task_assignments a
+                 JOIN tasks t ON t.id = a.task_id
+                 WHERE a.response_report_id = $1
+                 FOR UPDATE OF a`,
+                [id]
+            )
+            : { rows: [] };
         const currentResult = await client.query(
             "SELECT id, status, teacher_id, file_path, title FROM reports WHERE id = $1 FOR UPDATE",
             [id]
@@ -183,6 +193,27 @@ const updateReport = async (id, employee, data) => {
                     `/employee/reports/${id}`,
                     id,
                 ]);
+            }
+
+            if (data.status === "comment" && current.status !== "comment") {
+                for (const assignment of linkedTasksResult.rows) {
+                    if (assignment.status !== "completed") continue;
+                    await client.query(
+                        `UPDATE task_assignments
+                         SET status = 'pending', completed_at = NULL
+                         WHERE id = $1`,
+                        [assignment.id]
+                    );
+                    await client.query(
+                        `INSERT INTO notifications (employee_id, type, title, body, href, task_id)
+                         VALUES ($1, 'task_reopened', 'فعالیت برای اصلاح بازگشایی شد', $2, '/employee/tasks', $3)`,
+                        [
+                            assignment.teacher_id,
+                            `گزارش فعالیت «${assignment.task_title}» رد شد. لطفاً اصلاحات لازم را انجام دهید و دوباره ارسال کنید.`,
+                            assignment.task_id,
+                        ]
+                    );
+                }
             }
         } else {
             if (employee.role !== "teacher" || employee.id !== current.teacher_id) {

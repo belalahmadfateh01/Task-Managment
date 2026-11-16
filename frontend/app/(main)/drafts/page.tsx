@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download, Trash2 } from "lucide-react";
-import { api, downloadApiFile } from "@/lib/api";
+import { api, apiAllPages, downloadApiFile } from "@/lib/api";
 
 type ReportDraft = {
   id: string;
@@ -21,7 +21,7 @@ export default function DraftsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api<ReportDraft[]>("/report?status=draft&limit=100")
+    apiAllPages<ReportDraft>("/report?status=draft")
       .then(setDrafts)
       .catch((cause) => setError(cause instanceof Error ? cause.message : "بارگذاری پیش‌نویس‌ها ناموفق بود."))
       .finally(() => setLoading(false));

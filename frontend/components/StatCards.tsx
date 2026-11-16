@@ -1,13 +1,13 @@
 import { Check, Mail, MailOpen, MessageCircle } from "lucide-react";
 
 interface Props {
-  approved: number;
-  total: number;
-  pending: number;
-  feedback: number;
+  approved: number | null;
+  total: number | null;
+  pending: number | null;
+  feedback: number | null;
 }
 
-const fmt = (n: number) => n.toLocaleString("en-US");
+const fmt = (n: number | null) => n === null ? "—" : n.toLocaleString("en-US");
 
 export default function StatCards({
   approved,
@@ -23,7 +23,7 @@ export default function StatCards({
       tone: "bg-emerald-100 text-emerald-600",
     },
     {
-      label: "تمام دریافتی ها",
+      label: "همه گزارش‌های دریافتی",
       value: total,
       Icon: MailOpen,
       tone: "bg-blue-200 text-blue-600",

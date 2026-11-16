@@ -126,7 +126,7 @@ export default function ReportsTable({
         {rows.length === 0 && (
           <p className="px-3 py-14 text-center text-slate-500">
             {view === "active"
-              ? "در این بازه گزارشی وجود ندارد. بازه زمانی را تغییر دهید."
+              ? "هنوز گزارشی دریافت نشده است."
               : "هنوز گزارشی بایگانی نشده است."}
           </p>
         )}

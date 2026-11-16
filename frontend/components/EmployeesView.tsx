@@ -6,7 +6,7 @@ import EmployeeDetails from "@/components/EmployeeDetails";
 import EmployeeForm from "@/components/EmployeeForm";
 import EmployeesTable from "@/components/EmployeesTable";
 import Dialog from "@/components/Dialog";
-import { api, apiAssetUrl } from "@/lib/api";
+import { api, apiAllPages, apiAssetUrl } from "@/lib/api";
 import type { Employee } from "@/lib/types";
 
 type View = "list" | "add" | "details";
@@ -22,10 +22,11 @@ export default function EmployeesView() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api<Record<string, unknown>[]>("/employee?limit=100")
+    apiAllPages<Record<string, unknown>>("/employee")
       .then((rows) => setEmployees(rows.map((row) => ({
         id: String(row.id), name: [row.f_name, row.l_name].filter(Boolean).join(" "),
         firstName: String(row.f_name ?? ""), lastName: String(row.l_name ?? ""),
+        username: typeof row.user_name === "string" ? row.user_name : undefined,
         email: String(row.email ?? ""), avatar: apiAssetUrl(typeof row.image === "string" ? row.image : null),
         joinedAt: String(row.created_at ?? "").slice(0, 10), phone: typeof row.phone === "string" ? row.phone : undefined,
         address: typeof row.address === "string" ? row.address : undefined,
@@ -103,6 +104,7 @@ export default function EmployeesView() {
         name: employee.name,
         firstName: employee.firstName,
         lastName: employee.lastName,
+        username: typeof created.user_name === "string" ? created.user_name : employee.email.split("@")[0],
         email: employee.email,
         avatar,
         joinedAt: employee.joinedAt,
@@ -130,6 +132,7 @@ export default function EmployeesView() {
             ...activeEmployee,
             firstName: profile.f_name,
             lastName: profile.l_name,
+            username: profile.user_name,
             name: [profile.f_name, profile.l_name].filter(Boolean).join(" "),
             email: profile.email,
             avatar: apiAssetUrl(profile.image),

@@ -10,7 +10,7 @@ import InboxReportSidebar from "@/components/InboxReportSidebar";
 import InboxToolbar from "@/components/InboxToolbar";
 import { attachmentStyle } from "@/components/inboxAttachmentStyle";
 import { type InboxAttachment, type InboxReport } from "@/lib/inbox";
-import { api, apiAssetUrl } from "@/lib/api";
+import { api, apiAllPages, apiAssetUrl } from "@/lib/api";
 
 type ReportDecision = "approved" | "rejected";
 
@@ -73,7 +73,7 @@ export default function InboxView({
   const [actionError, setActionError] = useState("");
 
   useEffect(() => {
-    api<Record<string, unknown>[]>("/report?limit=100")
+    apiAllPages<Record<string, unknown>>("/report")
       .then((rows) => setBackendReports(rows.map(mapReport)))
       .catch((cause) => setLoadError(cause instanceof Error ? cause.message : "بارگذاری صندوق ورودی ناموفق بود."));
   }, []);

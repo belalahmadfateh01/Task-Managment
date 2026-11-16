@@ -94,3 +94,22 @@ export async function api<T>(
   // Keep top-level fields such as employee details when `message` is text.
   return data as T;
 }
+
+export async function apiAllPages<T>(endpoint: string, pageSize = 100): Promise<T[]> {
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+    throw new RangeError("pageSize must be an integer between 1 and 100");
+  }
+  const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const separatorIndex = path.indexOf("?");
+  const pathname = separatorIndex === -1 ? path : path.slice(0, separatorIndex);
+  const params = new URLSearchParams(separatorIndex === -1 ? "" : path.slice(separatorIndex + 1));
+  const items: T[] = [];
+
+  for (let page = 1; ; page += 1) {
+    params.set("limit", String(pageSize));
+    params.set("page", String(page));
+    const pageItems = await api<T[]>(`${pathname}?${params.toString()}`);
+    items.push(...pageItems);
+    if (pageItems.length < pageSize) return items;
+  }
+}

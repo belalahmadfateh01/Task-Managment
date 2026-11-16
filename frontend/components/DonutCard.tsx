@@ -127,9 +127,11 @@ export default function DonutCard({ period, onPeriod, custom, onCustom, range, c
             </div>
           )}
         </div>
-        <p dir="ltr" className="text-right text-[0.88em] text-slate-500">
-          {formatJalali(range.from, "/")} ← {formatJalali(range.to, "/")}
-        </p>
+        {/* {period !== "daily" && (
+          <p dir="ltr" className="text-right text-[0.88em] text-slate-500">
+            {formatJalali(range.from, "/")} ← {formatJalali(range.to, "/")}
+          </p>
+        )} */}
       </div>
 
       {period === "custom" && (

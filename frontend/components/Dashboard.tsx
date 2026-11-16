@@ -8,7 +8,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, apiAssetUrl } from "@/lib/api";
+import { api, apiAllPages, apiAssetUrl } from "@/lib/api";
 import { toInputDate } from "@/lib/jalali";
 import { STATUS_ORDER } from "@/lib/labels";
 import { getRange, inRange } from "@/lib/period";
@@ -34,6 +34,7 @@ const MENU_W = 176;
 export default function Dashboard() {
   const [now, setNow] = useState<Date | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
+  const [reportsLoaded, setReportsLoaded] = useState(false);
   const [period, setPeriod] = useState<PeriodKey>("daily");
   const [custom, setCustom] = useState<CustomRange>({ from: "", to: "" });
   const [view, setView] = useState<"active" | "archived">("active");
@@ -50,14 +51,17 @@ export default function Dashboard() {
     from.setDate(from.getDate() - 29);
     setNow(n);
     setCustom({ from: toInputDate(from), to: toInputDate(n) });
-    api<Record<string, unknown>[]>("/report?limit=100")
-      .then((rows) => setReports(rows.map((row) => ({
-        id: String(row.id), title: String(row.title ?? ""),
-        sender: [row.f_name, row.l_name].filter(Boolean).join(" "),
-        senderAvatar: apiAssetUrl(typeof row.image === "string" ? row.image : null),
-        status: row.status === "accept" ? "approved" : row.status === "comment" ? "feedback" : "pending",
-        createdAt: String(row.report_date ?? n.toISOString()), archived: Boolean(row.archived_at),
-      }))))
+    apiAllPages<Record<string, unknown>>("/report")
+      .then((rows) => {
+        setReports(rows.map((row) => ({
+          id: String(row.id), title: String(row.title ?? ""),
+          sender: [row.f_name, row.l_name].filter(Boolean).join(" "),
+          senderAvatar: apiAssetUrl(typeof row.image === "string" ? row.image : null),
+          status: row.status === "accept" ? "approved" : row.status === "comment" ? "feedback" : "pending",
+          createdAt: String(row.report_date ?? n.toISOString()), archived: Boolean(row.archived_at),
+        })));
+        setReportsLoaded(true);
+      })
       .catch((error) => setLoadError(error instanceof Error ? error.message : "بارگذاری گزارش‌ها ناموفق بود."));
   }, []);
 
@@ -72,21 +76,22 @@ export default function Dashboard() {
   );
 
   const counts = useMemo(() => {
-    const c: Record<Status, number> = {
-      received: 0,
-      feedback: 0,
-      approved: 0,
-      pending: 0,
-    };
+    const c: Record<Status, number> = { feedback: 0, approved: 0, pending: 0 };
     for (const r of inPeriod) c[r.status]++;
     return c;
   }, [inPeriod]);
 
-  const total = STATUS_ORDER.reduce((s, k) => s + counts[k], 0);
+  const allCounts = useMemo(() => {
+    const c: Record<Status, number> = { feedback: 0, approved: 0, pending: 0 };
+    for (const report of reports) c[report.status]++;
+    return c;
+  }, [reports]);
+
+  const total = STATUS_ORDER.reduce((s, k) => s + allCounts[k], 0);
   const archivedCount = reports.filter((r) => r.archived).length;
   const viewRows = view === "archived"
     ? reports.filter((r) => r.archived)
-    : inPeriod.filter((r) => !r.archived);
+    : reports.filter((r) => !r.archived);
   const rows = showAll ? viewRows : viewRows.slice(0, PAGE_SIZE);
 
   // Close the row menu on outside click / Escape / scroll / resize
@@ -153,10 +158,10 @@ export default function Dashboard() {
     <>
       {loadError && <p role="alert" className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</p>}
       <StatCards
-        approved={counts.approved}
-        total={total}
-        pending={counts.pending}
-        feedback={counts.feedback}
+        approved={reportsLoaded ? allCounts.approved : null}
+        total={reportsLoaded ? total : null}
+        pending={reportsLoaded ? allCounts.pending : null}
+        feedback={reportsLoaded ? allCounts.feedback : null}
       />
 
       <div className="mt-(--gap) grid grid-cols-1 items-start gap-(--gap) lap:grid-cols-[minmax(0,1fr)_clamp(300px,27vw,410px)]">
@@ -171,7 +176,7 @@ export default function Dashboard() {
           archivedCount={archivedCount}
           showAll={showAll}
           onToggleAll={() => setShowAll((s) => !s)}
-          showDate={period !== "daily"}
+          showDate
           onOpenMenu={openMenu}
         />
         <DonutCard

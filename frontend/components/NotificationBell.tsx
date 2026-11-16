@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, CheckCheck, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -68,6 +68,13 @@ const TONES: Record<string, NotificationTone> = {
     dot: "bg-slate-400",
     action: "bg-slate-500 hover:bg-slate-600",
   },
+  task_reopened: {
+    card: "border-orange-300",
+    title: "text-orange-800",
+    date: "text-orange-700",
+    dot: "bg-orange-500",
+    action: "bg-orange-500 hover:bg-orange-600",
+  },
 };
 
 const FALLBACK_TONE = TONES.report_submitted;
@@ -106,11 +113,24 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+  const refreshInFlight = useRef(false);
+  const knownNotificationIds = useRef<Set<string> | null>(null);
 
   const refresh = useCallback(async () => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
     setLoading(true);
     try {
-      const result = await api<NotificationResponse>("/notification?limit=100&includeRead=true");
+      const result = await api<NotificationResponse>("/notification?limit=100&includeRead=true", { cache: "no-store" });
+      const nextIds = new Set(result.items.map((item) => item.id));
+      const previousIds = knownNotificationIds.current;
+      knownNotificationIds.current = nextIds;
+
+      if (previousIds && result.items.some((item) => !previousIds.has(item.id))) {
+        window.location.reload();
+        return;
+      }
+
       setItems(result.items);
       setUnreadCount(result.unreadCount);
       setTotalCount(result.totalCount);
@@ -118,14 +138,24 @@ export default function NotificationBell() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "بارگذاری اعلان‌ها ناموفق بود.");
     } finally {
+      refreshInFlight.current = false;
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 60_000);
-    return () => window.clearInterval(timer);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const timer = window.setInterval(refreshWhenVisible, 15_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [refresh]);
 
   useEffect(() => {

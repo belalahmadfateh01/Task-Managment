@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { EmployeeReportList } from "@/components/EmployeePortal";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "گزارش‌های من | گزارش یار" };
+export const metadata: Metadata = { title: "صفحه اصلی | گزارش یار" };
 
 export default function EmployeeInboxPage() {
-  return <EmployeeReportList />;
+  redirect("/employee/dashboard");
 }

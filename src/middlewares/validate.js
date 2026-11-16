@@ -1,6 +1,9 @@
 import ApiError from "../utils/ApiError.js";
 
 const validate = (schema) => (req, res, next) => {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+        req.body = {};
+    }
     const errors = schema(req);
     if (errors.length) return next(new ApiError(400, errors.join("; ")));
     next();
@@ -86,7 +89,7 @@ const schemas = {
         return errors;
     },
     taskUpdate: req => {
-        const allowed = ["title", "description", "start_date", "deadline", "file_name"];
+        const allowed = ["title", "description", "start_date", "deadline", "file_name", "remove_file"];
         const fields = Object.keys(req.body);
         const errors = [];
         if (!fields.length) errors.push("At least one field is required");
@@ -99,6 +102,7 @@ const schemas = {
         }
         if ("deadline" in req.body && req.body.deadline != null && (typeof req.body.deadline !== "string" || Number.isNaN(Date.parse(req.body.deadline)))) errors.push("deadline must be a valid date");
         if ("file_name" in req.body && req.body.file_name != null && (typeof req.body.file_name !== "string" || req.body.file_name.length > 512)) errors.push("file_name must be at most 512 characters");
+        if ("remove_file" in req.body && ![true, "true"].includes(req.body.remove_file)) errors.push("remove_file must be true");
         return errors.filter(Boolean);
     },
     taskStatus: req => [["pending", "in_progress", "completed"].includes(req.body.status) ? null : "Invalid task status"].filter(Boolean),
