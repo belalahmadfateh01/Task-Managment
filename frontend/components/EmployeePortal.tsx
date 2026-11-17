@@ -586,11 +586,6 @@ export function EmployeeReportComposer() {
     setContent(draft.content);
     setAttachment(draft.attachment);
     setAttachmentFile(null);
-    if (draft.attachment?.url?.startsWith("data:")) {
-      void fetch(draft.attachment.url)
-        .then((response) => response.blob())
-        .then((blob) => setAttachmentFile(new File([blob], draft.attachment!.name, { type: blob.type })));
-    }
   }, [draft]);
 
   if (draftId && isLoading) {
@@ -620,20 +615,12 @@ export function EmployeeReportComposer() {
       event.currentTarget.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setAttachment({
-          name: file.name,
-          size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-          url: reader.result,
-        });
-        setAttachmentFile(file);
-        setError("");
-      }
-    };
-    reader.onerror = () => setError("خواندن فایل ناموفق بود.");
-    reader.readAsDataURL(file);
+    setAttachment({
+      name: file.name,
+      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+    });
+    setAttachmentFile(file);
+    setError("");
   };
 
   const save = async (status: "pending" | "draft") => {
@@ -661,10 +648,21 @@ export function EmployeeReportComposer() {
       const method = draft?.serverBacked ? "PATCH" : "POST";
       const endpoint = draft?.serverBacked ? `/report/${draft.id}` : "/report";
       let requestBody: BodyInit = JSON.stringify(body);
-      if (attachmentFile) {
+      let fileToUpload = attachmentFile;
+      if (!fileToUpload && attachment?.url?.startsWith("data:")) {
+        const response = await fetch(attachment.url);
+        if (!response.ok) throw new Error("بازیابی پیوست پیش‌نویس ناموفق بود؛ فایل را دوباره پیوست کنید.");
+        const blob = await response.blob();
+        fileToUpload = new File([blob], attachment.name, { type: blob.type });
+        setAttachmentFile(fileToUpload);
+      }
+      if (attachment && !fileToUpload && !draft?.serverBacked) {
+        throw new Error("پیوست این پیش‌نویس در دسترس نیست؛ فایل را دوباره پیوست کنید.");
+      }
+      if (fileToUpload) {
         const form = new FormData();
         for (const [key, value] of Object.entries(body)) form.append(key, value);
-        form.append("file", attachmentFile);
+        form.append("file", fileToUpload);
         requestBody = form;
       }
       if (draft?.serverBacked) {

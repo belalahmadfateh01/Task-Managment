@@ -15,7 +15,11 @@ import type { Employee } from "@/lib/types";
 interface EmployeeFormProps {
   onBack: () => void;
   onAdd: (
-    employee: Omit<Employee, "id"> & { avatarFile?: File; firstName: string; lastName: string },
+    employee: Omit<Employee, "id"> & {
+      avatarFile?: File;
+      firstName: string;
+      lastName: string;
+    },
   ) => boolean | string | Promise<boolean | string>;
 }
 
@@ -130,26 +134,55 @@ export default function EmployeeForm({ onBack, onAdd }: EmployeeFormProps) {
   return (
     <form onSubmit={submit} noValidate className="mx-auto w-full max-w-[980px]">
       <div className="mb-5 flex items-center justify-between border-b border-line pb-4">
-        <h2 className="text-lg font-bold text-slate-900">اضافه کردن کارمند</h2>
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white">
+          className="inline-flex gap-2 px-3 py-2 text-sm font-medium text-blue-600"
+        >
           <ArrowRight size={16} /> بازگشت
         </button>
+        <h2 className="text-lg font-bold text-slate-900">اضافه کردن کارمند</h2>
       </div>
 
       <section className="mb-5 grid gap-4 rounded-lg border border-line bg-white p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:px-5">
+        <div className="flex items-center gap-2">
+          <div className="relative grid size-[76px] place-items-center rounded-full border border-dashed border-blue-300 bg-blue-50 text-blue-500">
+            {photo ? (
+              <Image
+                src={photo}
+                alt="پیش‌نمایش تصویر پروفایل"
+                fill
+                unoptimized
+                className="object-cover rounded-full "
+              />
+            ) : (
+              <Camera size={23} />
+            )}
+            {photo && (
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                aria-label="حذف تصویر انتخاب‌شده"
+                className="absolute -bottom-1 -right-1 z-10 grid size-7 place-items-center rounded-full border-white border-2 bg-blue-600 text-white"
+              >
+                <Plus size={13} />
+              </button>
+            )}
+          </div>
+          <div>
+            <h3 className="font-semibold">تصویر پروفایل کارمند</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              فرمت‌های مجاز JPG، PNG و WEBP، حداکثر ۲ مگابایت
+            </p>
+          </div>
+        </div>
         <div>
-          <h3 className="font-semibold">تصویر پروفایل کارمند</h3>
-          <p className="mt-1 text-xs text-slate-500">
-            فرمت‌های مجاز JPG، PNG و WEBP، حداکثر ۲ مگابایت
-          </p>
           <button
             type="button"
             onClick={() => fileInput.current?.click()}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100">
-            <ImagePlus size={16} /> انتخاب عکس
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+          >
+            انتخاب عکس
           </button>
           <input
             ref={fileInput}
@@ -160,38 +193,11 @@ export default function EmployeeForm({ onBack, onAdd }: EmployeeFormProps) {
             aria-label="انتخاب عکس پروفایل"
           />
         </div>
-        <div className="relative grid size-[76px] place-items-center overflow-hidden rounded-full border border-dashed border-blue-300 bg-blue-50 text-blue-500">
-          {photo ? (
-            <Image
-              src={photo}
-              alt="پیش‌نمایش تصویر پروفایل"
-              fill
-              unoptimized
-              className="object-cover"
-            />
-          ) : (
-            <Camera size={23} />
-          )}
-          {photo && (
-            <button
-              type="button"
-              onClick={() => {
-                setPhoto(null);
-                setPhotoFile(undefined);
-                if (fileInput.current) fileInput.current.value = "";
-              }}
-              aria-label="حذف تصویر انتخاب‌شده"
-              className="absolute bottom-0 right-0 grid size-6 place-items-center rounded-full bg-blue-600 text-white">
-              <X size={13} />
-            </button>
-          )}
-        </div>
       </section>
 
       <section className="grid gap-x-5 gap-y-4 rounded-lg border border-line bg-white p-4 sm:grid-cols-2 sm:p-5">
         <h3 className="sm:col-span-2 flex items-center gap-2 border-b border-line pb-3 font-semibold">
-          <UserRound size={17} className="text-blue-600" /> اطلاعات اولیه و حساب
-          کاربری
+          اطلاعات اولیه و حساب کاربری
         </h3>
         {field("نام", name, setName, { required: true, error: errors.name })}
         {field("تخلص", lastName, setLastName, {
@@ -236,12 +242,14 @@ export default function EmployeeForm({ onBack, onAdd }: EmployeeFormProps) {
         <button
           type="button"
           onClick={onBack}
-          className="rounded-lg border border-line px-7 py-2.5 text-sm font-semibold text-slate-600 hover:bg-white">
+          className="rounded-lg border border-line px-7 py-2.5 text-sm font-semibold text-slate-600 hover:bg-white"
+        >
           لغو
         </button>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 rounded-lg bg-brand px-7 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-deep">
+          className="inline-flex items-center gap-2 rounded-lg bg-brand px-7 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-deep"
+        >
           <Plus size={17} /> اضافه کردن
         </button>
       </div>

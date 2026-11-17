@@ -9,7 +9,7 @@ const NAV = [
   { label: "صفحه اصلی", icon: House, href: "/dashboard" },
   { label: "صندوق ورودی", icon: Inbox, href: "/inbox" },
   { label: "کارمندان", icon: UserPlus, href: "/employees" },
-  { label: "وظایف", icon: Calendar, href: "/tasks" },
+  { label: "فعالیت ها", icon: Calendar, href: "/tasks" },
 ];
 
 export default function Sidebar() {
@@ -19,7 +19,8 @@ export default function Sidebar() {
     <aside className="sticky top-0 flex h-screen flex-col gap-10 bg-brand px-3 py-5 text-white xl:gap-14 xl:px-5">
       <Link
         href="/dashboard"
-        className="flex items-center justify-center gap-3 rounded-xl border border-white/85 px-3 py-3.5 text-xl font-semibold">
+        className="flex items-center justify-center gap-3 rounded-xl border border-white/85 px-3 py-3.5 text-xl font-semibold"
+      >
         <Image
           src="/imges/LOGO.svg"
           alt=""
@@ -43,7 +44,8 @@ export default function Sidebar() {
                 isActive
                   ? "w-[calc(100%+20px)] rounded-r-xl bg-white text-brand-deep shadow-sm"
                   : "hover:bg-white/15 w-[calc(100%+20px)] rounded-r-xl"
-              }`}>
+              }`}
+            >
               <Icon size={22} strokeWidth={1.6} aria-hidden />
               <span className="max-xl:hidden">{label}</span>
             </Link>
