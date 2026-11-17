@@ -16,23 +16,44 @@ export default function EmployeesView() {
   const [selectedIds, setSelectedIds] = useState<Array<string | number>>([]);
   const [view, setView] = useState<View>("list");
   const [activeEmployee, setActiveEmployee] = useState<Employee | null>(null);
-  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(
+    null,
+  );
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     apiAllPages<Record<string, unknown>>("/employee")
-      .then((rows) => setEmployees(rows.map((row) => ({
-        id: String(row.id), name: [row.f_name, row.l_name].filter(Boolean).join(" "),
-        firstName: String(row.f_name ?? ""), lastName: String(row.l_name ?? ""),
-        username: typeof row.user_name === "string" ? row.user_name : undefined,
-        email: String(row.email ?? ""), avatar: apiAssetUrl(typeof row.image === "string" ? row.image : null),
-        joinedAt: String(row.created_at ?? "").slice(0, 10), phone: typeof row.phone === "string" ? row.phone : undefined,
-        address: typeof row.address === "string" ? row.address : undefined,
-        lastLoginAt: row.last_login_at ? String(row.last_login_at) : undefined,
-      }))))
-      .catch((cause) => setError(cause instanceof Error ? cause.message : "بارگذاری کارمندان ناموفق بود."))
+      .then((rows) =>
+        setEmployees(
+          rows.map((row) => ({
+            id: String(row.id),
+            name: [row.f_name, row.l_name].filter(Boolean).join(" "),
+            firstName: String(row.f_name ?? ""),
+            lastName: String(row.l_name ?? ""),
+            username:
+              typeof row.user_name === "string" ? row.user_name : undefined,
+            email: String(row.email ?? ""),
+            avatar: apiAssetUrl(
+              typeof row.image === "string" ? row.image : null,
+            ),
+            joinedAt: String(row.created_at ?? "").slice(0, 10),
+            phone: typeof row.phone === "string" ? row.phone : undefined,
+            address: typeof row.address === "string" ? row.address : undefined,
+            lastLoginAt: row.last_login_at
+              ? String(row.last_login_at)
+              : undefined,
+          })),
+        ),
+      )
+      .catch((cause) =>
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "بارگذاری کارمندان ناموفق بود.",
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -48,27 +69,48 @@ export default function EmployeesView() {
     setError("");
     try {
       await api(`/employee/${id}`, { method: "DELETE" });
-      setEmployees((current) => current.filter((employee) => employee.id !== id));
-      setSelectedIds((current) => current.filter((selectedId) => selectedId !== id));
+      setEmployees((current) =>
+        current.filter((employee) => employee.id !== id),
+      );
+      setSelectedIds((current) =>
+        current.filter((selectedId) => selectedId !== id),
+      );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "حذف کارمند ناموفق بود.");
+      setError(
+        cause instanceof Error ? cause.message : "حذف کارمند ناموفق بود.",
+      );
     }
   };
 
   const removeSelectedEmployees = async () => {
     setError("");
     const ids = [...selectedIds];
-    const results = await Promise.allSettled(ids.map((id) => api(`/employee/${id}`, { method: "DELETE" })));
-    const deletedIds = ids.filter((_id, index) => results[index].status === "fulfilled");
-    setEmployees((current) => current.filter((employee) => !deletedIds.includes(employee.id)));
-    setSelectedIds((current) => current.filter((id) => !deletedIds.includes(id)));
+    const results = await Promise.allSettled(
+      ids.map((id) => api(`/employee/${id}`, { method: "DELETE" })),
+    );
+    const deletedIds = ids.filter(
+      (_id, index) => results[index].status === "fulfilled",
+    );
+    setEmployees((current) =>
+      current.filter((employee) => !deletedIds.includes(employee.id)),
+    );
+    setSelectedIds((current) =>
+      current.filter((id) => !deletedIds.includes(id)),
+    );
     const failedCount = results.length - deletedIds.length;
-    if (failedCount) setError(`${deletedIds.length} کارمند حذف شد؛ حذف ${failedCount} مورد ناموفق بود.`);
+    if (failedCount)
+      setError(
+        `${deletedIds.length} کارمند حذف شد؛ حذف ${failedCount} مورد ناموفق بود.`,
+      );
     setConfirmBulkDelete(false);
   };
 
   const addEmployee = async (
-    employee: Omit<Employee, "id"> & { avatarFile?: File; firstName: string; lastName: string },
+    employee: Omit<Employee, "id"> & {
+      avatarFile?: File;
+      firstName: string;
+      lastName: string;
+    },
   ) => {
     if (
       employees.some(
@@ -80,8 +122,17 @@ export default function EmployeesView() {
     }
     try {
       const created = await api<Record<string, unknown>>("/employee/register", {
-        method: "POST", body: JSON.stringify({ f_name: employee.firstName, l_name: employee.lastName,
-          user_name: employee.email.split("@")[0], email: employee.email, password: employee.password, role: "teacher", phone: employee.phone, address: employee.address }),
+        method: "POST",
+        body: JSON.stringify({
+          f_name: employee.firstName,
+          l_name: employee.lastName,
+          user_name: employee.email.split("@")[0],
+          email: employee.email,
+          password: employee.password,
+          role: "teacher",
+          phone: employee.phone,
+          address: employee.address,
+        }),
       });
       let avatar = "/imges/Photo.png";
       if (employee.avatarFile) {
@@ -92,29 +143,44 @@ export default function EmployeesView() {
             `/employee/${created.id}/profile/image`,
             { method: "PATCH", body: form },
           );
-          avatar = apiAssetUrl(typeof updated.image === "string" ? updated.image : avatar);
+          avatar = apiAssetUrl(
+            typeof updated.image === "string" ? updated.image : avatar,
+          );
         } catch (cause) {
-          setError(cause instanceof Error
-            ? `کارمند ثبت شد، اما ذخیره تصویر ناموفق بود: ${cause.message}`
-            : "کارمند ثبت شد، اما ذخیره تصویر ناموفق بود.");
+          setError(
+            cause instanceof Error
+              ? `کارمند ثبت شد، اما ذخیره تصویر ناموفق بود: ${cause.message}`
+              : "کارمند ثبت شد، اما ذخیره تصویر ناموفق بود.",
+          );
         }
       }
-      setEmployees((current) => [...current, {
-        id: String(created.id),
-        name: employee.name,
-        firstName: employee.firstName,
-        lastName: employee.lastName,
-        username: typeof created.user_name === "string" ? created.user_name : employee.email.split("@")[0],
-        email: employee.email,
-        avatar,
-        joinedAt: employee.joinedAt,
-        phone: employee.phone,
-        address: typeof created.address === "string" ? created.address : employee.address,
-      }]);
+      setEmployees((current) => [
+        ...current,
+        {
+          id: String(created.id),
+          name: employee.name,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          username:
+            typeof created.user_name === "string"
+              ? created.user_name
+              : employee.email.split("@")[0],
+          email: employee.email,
+          avatar,
+          joinedAt: employee.joinedAt,
+          phone: employee.phone,
+          address:
+            typeof created.address === "string"
+              ? created.address
+              : employee.address,
+        },
+      ]);
       setView("list");
       return true;
     } catch (cause) {
-      return cause instanceof Error ? cause.message : "افزودن کارمند ناموفق بود.";
+      return cause instanceof Error
+        ? cause.message
+        : "افزودن کارمند ناموفق بود.";
     }
   };
 
@@ -140,7 +206,11 @@ export default function EmployeesView() {
             address: profile.address || undefined,
           };
           setActiveEmployee(nextEmployee);
-          setEmployees((current) => current.map((item) => item.id === activeEmployee.id ? nextEmployee : item));
+          setEmployees((current) =>
+            current.map((item) =>
+              item.id === activeEmployee.id ? nextEmployee : item,
+            ),
+          );
         }}
       />
     );
@@ -149,7 +219,10 @@ export default function EmployeesView() {
   return (
     <div className="space-y-4">
       {error && (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
           {error}
         </p>
       )}
@@ -158,23 +231,25 @@ export default function EmployeesView() {
           <button
             type="button"
             onClick={() => setConfirmBulkDelete(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100">
+            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100"
+          >
             <Trash2 size={16} /> حذف {selectedIds.length} کارمند
           </button>
         ) : (
-          <span className="text-xs text-slate-500">
-            برای حذف گروهی، کارمندان را انتخاب کنید.
-          </span>
+          <span></span>
         )}
         <button
           type="button"
           onClick={() => setView("add")}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-deep">
+          className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-deep"
+        >
           <Plus size={18} /> افزودن کارمند
         </button>
       </div>
       {loading ? (
-        <p className="py-12 text-center text-sm text-slate-500">در حال بارگذاری کارمندان…</p>
+        <p className="py-12 text-center text-sm text-slate-500">
+          در حال بارگذاری کارمندان…
+        </p>
       ) : (
         <EmployeesTable
           employees={employees}

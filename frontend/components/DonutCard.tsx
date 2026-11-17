@@ -2,7 +2,13 @@
 
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { PERIOD_KEYS, PERIOD_LABEL, STATUS_COLOR, STATUS_LABEL, STATUS_ORDER } from "@/lib/labels";
+import {
+  PERIOD_KEYS,
+  PERIOD_LABEL,
+  STATUS_COLOR,
+  STATUS_LABEL,
+  STATUS_ORDER,
+} from "@/lib/labels";
 import type { CustomRange, DateRange, PeriodKey, Status } from "@/lib/types";
 import { formatJalali } from "@/lib/jalali";
 
@@ -27,8 +33,18 @@ function Donut({ counts }: { counts: Record<Status, number> }) {
 
   return (
     <div className="relative mx-auto my-1.5 aspect-square w-full max-w-[300px]">
-      <svg viewBox="0 0 260 260" role="img" aria-label={`مجموع گزارش‌ها: ${total}`} className="size-full">
-        <g transform="translate(130 130) rotate(-90)" fill="none" strokeWidth={SW} strokeLinecap="round">
+      <svg
+        viewBox="0 0 260 260"
+        role="img"
+        aria-label={`مجموع گزارش‌ها: ${total}`}
+        className="size-full"
+      >
+        <g
+          transform="translate(130 130) rotate(-90)"
+          fill="none"
+          strokeWidth={SW}
+          strokeLinecap="round"
+        >
           {total === 0 && <circle r={R} stroke="#e2e8f0" />}
           {segs.map((k) => {
             const visible = Math.max((counts[k] / total) * C - gap, SW + 0.5);
@@ -48,16 +64,26 @@ function Donut({ counts }: { counts: Record<Status, number> }) {
         </g>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <strong className="text-[2em] leading-tight">{total.toLocaleString("en-US")}</strong>
+        <strong className="text-[2em] leading-tight">
+          {total.toLocaleString("en-US")}
+        </strong>
         <span className="text-[0.88em] text-slate-500">گزارش</span>
       </div>
     </div>
   );
 }
 
-const dateInput = "rounded-[10px] border border-line bg-white px-2.5 py-2 text-slate-900";
+const dateInput =
+  "rounded-[10px] border border-line bg-white px-2.5 py-2 text-slate-900";
 
-export default function DonutCard({ period, onPeriod, custom, onCustom, range, counts }: Props) {
+export default function DonutCard({
+  period,
+  onPeriod,
+  custom,
+  onCustom,
+  range,
+  counts,
+}: Props) {
   const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
   const periodMenuRef = useRef<HTMLDivElement>(null);
   const periodButtonRef = useRef<HTMLButtonElement>(null);
@@ -65,7 +91,8 @@ export default function DonutCard({ period, onPeriod, custom, onCustom, range, c
   useEffect(() => {
     if (!periodMenuOpen) return;
     const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!periodMenuRef.current?.contains(event.target as Node)) setPeriodMenuOpen(false);
+      if (!periodMenuRef.current?.contains(event.target as Node))
+        setPeriodMenuOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -97,8 +124,12 @@ export default function DonutCard({ period, onPeriod, custom, onCustom, range, c
             onClick={() => setPeriodMenuOpen((open) => !open)}
             className="inline-flex cursor-pointer items-center gap-1.5 py-1 text-[1.2em] font-bold text-slate-900"
           >
+            <ChevronDown
+              size={18}
+              aria-hidden
+              className={`transition-transform ${periodMenuOpen ? "rotate-180" : ""}`}
+            />
             {PERIOD_LABEL[period]}
-            <ChevronDown size={18} aria-hidden className={`transition-transform ${periodMenuOpen ? "rotate-180" : ""}`} />
           </button>
           {periodMenuOpen && (
             <div
@@ -117,8 +148,10 @@ export default function DonutCard({ period, onPeriod, custom, onCustom, range, c
                     setPeriodMenuOpen(false);
                     periodButtonRef.current?.focus();
                   }}
-                  className={`w-full rounded-lg px-3 py-2 text-right text-sm transition hover:bg-surface ${
-                    period === key ? "font-bold text-slate-900" : "font-normal text-slate-500"
+                  className={`block w-full items-center gap-2 rounded-lg px-3 py-2 text-right text-sm transition hover:bg-surface ${
+                    period === key
+                      ? "font-bold text-slate-900"
+                      : "font-normal text-slate-500"
                   }`}
                 >
                   {PERIOD_LABEL[key]}
@@ -165,10 +198,15 @@ export default function DonutCard({ period, onPeriod, custom, onCustom, range, c
         {STATUS_ORDER.map((k) => (
           <li key={k} className="flex items-center justify-between font-medium">
             <span className="inline-flex items-center gap-2 text-[0.88em]">
-              <i className="size-2.5 rounded-full" style={{ background: STATUS_COLOR[k] }} />
+              <i
+                className="size-2.5 rounded-full"
+                style={{ background: STATUS_COLOR[k] }}
+              />
               {STATUS_LABEL[k]}
             </span>
-            <b className="text-[1.15em] font-bold">{counts[k].toLocaleString("en-US")}</b>
+            <b className="text-[1.15em] font-bold">
+              {counts[k].toLocaleString("en-US")}
+            </b>
           </li>
         ))}
       </ul>

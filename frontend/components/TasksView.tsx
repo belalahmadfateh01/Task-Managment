@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { ChevronDown, Paperclip, Plus, Trash2, Upload, X } from "lucide-react";
+import {
+  ChevronDown,
+  ClipboardPlus,
+  Paperclip,
+  Plus,
+  Send,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { api, apiAllPages, downloadApiFile } from "@/lib/api";
 import Dialog from "@/components/Dialog";
 
@@ -33,12 +42,24 @@ type Task = {
   assignments: Assignment[];
 };
 
+const TASK_STATUS_LABELS: Record<string, string> = {
+  pending: "در انتظار انجام",
+  in_progress: "در حال انجام",
+  completed: "تکمیل‌شده",
+};
+
+const TASK_STATUS_STYLES: Record<string, string> = {
+  pending: "bg-amber-100 text-amber-800",
+  in_progress: "bg-blue-100 text-blue-800",
+  completed: "bg-emerald-100 text-emerald-800",
+};
+
 export default function TasksView() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [employeeLoadError, setEmployeeLoadError] = useState("");
-  const [teacherId, setTeacherId] = useState("");
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -56,7 +77,7 @@ export default function TasksView() {
 
   const resetForm = () => {
     setTaskToEdit(null);
-    setTeacherId("");
+    setSelectedTeacherIds([]);
     setTitle("");
     setDescription("");
     setStartDate("");
@@ -80,12 +101,19 @@ export default function TasksView() {
     if (taskResult.status === "fulfilled") {
       setTasks(taskResult.value);
     } else {
-      errors.push(taskResult.reason instanceof Error ? taskResult.reason.message : "بارگذاری وظایف ناموفق بود.");
+      errors.push(
+        taskResult.reason instanceof Error
+          ? taskResult.reason.message
+          : "بارگذاری وظایف ناموفق بود.",
+      );
     }
     if (employeeResult.status === "fulfilled") {
       setEmployees(employeeResult.value);
     } else {
-      const message = employeeResult.reason instanceof Error ? employeeResult.reason.message : "بارگذاری کارمندان ناموفق بود.";
+      const message =
+        employeeResult.reason instanceof Error
+          ? employeeResult.reason.message
+          : "بارگذاری کارمندان ناموفق بود.";
       setEmployeeLoadError(message);
       errors.push(message);
     }
@@ -100,8 +128,12 @@ export default function TasksView() {
 
   const createTask = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!title.trim() || (!taskToEdit && !teacherId)) {
-      setError(taskToEdit ? "عنوان فعالیت را وارد کنید." : "عنوان فعالیت و کارمند را انتخاب کنید.");
+    if (!title.trim() || (!taskToEdit && selectedTeacherIds.length === 0)) {
+      setError(
+        taskToEdit
+          ? "عنوان فعالیت را وارد کنید."
+          : "عنوان فعالیت و دست‌کم یک کارمند را انتخاب کنید.",
+      );
       return;
     }
     if (startDate && deadline && startDate > deadline) {
@@ -121,14 +153,17 @@ export default function TasksView() {
       if (taskToEdit) {
         body = JSON.stringify(payload);
       } else {
-        body = JSON.stringify({ ...payload, teacher_ids: [teacherId] });
+        body = JSON.stringify({ ...payload, teacher_ids: selectedTeacherIds });
       }
       if (attachmentFile || removeExistingFile) {
         const form = new FormData();
-        for (const [key, value] of Object.entries(payload)) form.append(key, value ?? "");
-        if (!taskToEdit) form.append("teacher_ids", JSON.stringify([teacherId]));
+        for (const [key, value] of Object.entries(payload))
+          form.append(key, value ?? "");
+        if (!taskToEdit)
+          form.append("teacher_ids", JSON.stringify(selectedTeacherIds));
         if (attachmentFile) form.append("file", attachmentFile);
-        if (taskToEdit && removeExistingFile) form.append("remove_file", "true");
+        if (taskToEdit && removeExistingFile)
+          form.append("remove_file", "true");
         body = form;
       }
       await api<Task>(taskToEdit ? `/task/${taskToEdit.id}` : "/task", {
@@ -138,7 +173,9 @@ export default function TasksView() {
       resetForm();
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "ثبت وظیفه ناموفق بود.");
+      setError(
+        cause instanceof Error ? cause.message : "ثبت وظیفه ناموفق بود.",
+      );
     } finally {
       setSaving(false);
     }
@@ -147,12 +184,41 @@ export default function TasksView() {
   const selectAttachment = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
-    if (file.size > 15 * 1024 * 1024) {
-      setError("حجم پیوست نباید بیشتر از ۱۵ مگابایت باشد.");
+    if (file.size > 2 * 1024 * 1024) {
+      setError("حجم پیوست نباید بیشتر از ۲ مگابایت باشد.");
       event.currentTarget.value = "";
       return;
     }
-    const allowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".txt", ".csv", ".md", ".rtf", ".json", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".zip", ".7z", ".rar", ".gz", ".tar", ".bz2"];
+    const allowedExtensions = [
+      ".pdf",
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+      ".gif",
+      ".tif",
+      ".tiff",
+      ".txt",
+      ".csv",
+      ".md",
+      ".rtf",
+      ".json",
+      ".doc",
+      ".docx",
+      ".xls",
+      ".xlsx",
+      ".ppt",
+      ".pptx",
+      ".odt",
+      ".ods",
+      ".odp",
+      ".zip",
+      ".7z",
+      ".rar",
+      ".gz",
+      ".tar",
+      ".bz2",
+    ];
     const extension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
     if (!allowedExtensions.includes(extension)) {
       setError("فرمت پیوست پشتیبانی نمی‌شود.");
@@ -170,14 +236,19 @@ export default function TasksView() {
       await api(`/task/${id}`, { method: "DELETE" });
       setTasks((current) => current.filter((task) => task.id !== id));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "حذف وظیفه ناموفق بود.");
+      setError(
+        cause instanceof Error ? cause.message : "حذف وظیفه ناموفق بود.",
+      );
     }
   };
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      {error && (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+      {error && !formOpen && !taskToEdit && (
+        <p
+          role="alert"
+          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
           {error}
         </p>
       )}
@@ -186,198 +257,420 @@ export default function TasksView() {
           <button
             type="button"
             aria-expanded={formOpen}
-            onClick={() => formOpen ? resetForm() : setFormOpen(true)}
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-blue-700">
-            <Plus size={17} /> {formOpen ? "بستن فرم" : "ایجاد فعالیت"}
+            onClick={() => setFormOpen(true)}
+            className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            <Plus size={17} /> واگذاری فعالیت جدید
           </button>
         </div>
       )}
       {(formOpen || taskToEdit) && (
-      <form onSubmit={createTask} className="mx-auto w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-white">
-        <header className="flex items-center gap-3 border-b border-blue-100 px-5 py-4 sm:px-7">
-          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-blue-100 text-blue-700">
-            <Plus size={23} strokeWidth={1.7} />
-          </span>
-          <div>
-            <h2 className="font-bold text-slate-900">{taskToEdit ? "ویرایش فعالیت" : "ایجاد فعالیت"}</h2>
-            <p className="mt-1 text-xs text-slate-500">فعالیت‌های روزمره را برای اعضای تیم‌تان تعیین کنید.</p>
-          </div>
-        </header>
-        <div className="grid gap-5 p-5 sm:p-7">
-          {!taskToEdit && (
-            <label className="grid gap-2 text-sm font-semibold text-slate-800">
-              تعیین برای:
-              <span className="relative">
-                <select
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !saving) resetForm();
+          }}
+        >
+          <form
+            onSubmit={createTask}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="task-form-title"
+            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          >
+            <header className="flex items-start justify-between gap-4 border-b border-blue-100 bg-blue-50/60 px-5 py-4 sm:px-7">
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-blue-700 shadow-sm">
+                  <ClipboardPlus size={23} strokeWidth={1.8} />
+                </span>
+                <div>
+                  <h2 id="task-form-title" className="font-bold text-slate-900">
+                    {taskToEdit ? "ویرایش فعالیت" : "جزئیات فعالیت"}
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    مسئول و مهلت انجام را مشخص کنید.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="بستن فرم فعالیت"
+                onClick={resetForm}
+                disabled={saving}
+                className="grid size-10 shrink-0 place-items-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
+              >
+                <X size={21} />
+              </button>
+            </header>
+            {error && (
+              <p
+                role="alert"
+                className="mx-5 mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 sm:mx-7"
+              >
+                {error}
+              </p>
+            )}
+            <div className="grid gap-4 p-4 sm:p-6">
+              <label className="grid gap-2 text-sm font-semibold text-slate-800">
+                عنوان فعالیت
+                <input
                   required
-                  value={teacherId}
-                  onChange={(event) => setTeacherId(event.target.value)}
-                  disabled={employeesLoading || !teachers.length}
-                  className="h-12 w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 pl-10 text-right text-sm font-normal text-slate-700 outline-none focus:border-blue-500 disabled:bg-slate-50"
-                >
-                  <option value="">
-                    {employeesLoading ? "در حال بارگذاری کارمندان…" : employeeLoadError ? "بارگذاری کارمندان ناموفق بود" : teachers.length ? "کارمند را انتخاب کنید" : "کارمندی برای واگذاری وجود ندارد"}
-                  </option>
-                  {teachers.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>{teacher.f_name} {teacher.l_name}</option>
-                  ))}
-                </select>
-                <ChevronDown size={18} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              </span>
-            </label>
-          )}
-          <label className="grid gap-2 text-sm font-semibold text-slate-800">
-            عنوان فعالیت
-            <input
-              required
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="عنوان فعالیت را بیان کنید"
-              className="h-12 rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none placeholder:text-slate-400 focus:border-blue-500"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-semibold text-slate-800">
-            توضیحات
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="توضیحات فعالیت را بیان کنید"
-              rows={4}
-              className="resize-y rounded-lg border border-slate-300 px-3 py-3 text-sm font-normal outline-none placeholder:text-slate-400 focus:border-blue-500"
-            />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-semibold text-slate-800">
-              تاریخ شروع
-              <input
-                type="date"
-                value={startDate}
-                max={deadline || undefined}
-                onChange={(event) => setStartDate(event.target.value)}
-                className="h-12 rounded-lg border border-slate-300 px-3 text-sm font-normal text-blue-800 outline-none focus:border-blue-500"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-semibold text-slate-800">
-              تاریخ ختم
-              <input
-                type="date"
-                value={deadline}
-                min={startDate || undefined}
-                onChange={(event) => setDeadline(event.target.value)}
-                className="h-12 rounded-lg border border-slate-300 px-3 text-sm font-normal text-blue-800 outline-none focus:border-blue-500"
-              />
-            </label>
-          </div>
-          <div className="grid gap-2 text-sm font-semibold text-slate-800">
-            <span>پیوست فایل</span>
-            <label className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 text-xs font-normal text-slate-600 hover:bg-blue-50">
-              <span className="flex items-center gap-2">
-                <Upload size={16} /> فایل وظیفه (PDF، Office، تصویر و فرمت‌های دیگر؛ حداکثر ۱۵ مگابایت)
-              </span>
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff,.txt,.csv,.md,.rtf,.json,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.zip,.7z,.rar,.gz,.tar,.bz2"
-                onChange={selectAttachment}
-                className="sr-only"
-              />
-              <Paperclip size={16} />
-            </label>
-            {attachmentFile && (
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-xs font-normal">
-                <span className="min-w-0 truncate">{attachmentFile.name} <span className="text-slate-500">({(attachmentFile.size / (1024 * 1024)).toFixed(1)} MB)</span></span>
-                <button type="button" aria-label="حذف فایل انتخاب‌شده" onClick={() => setAttachmentFile(null)} className="mr-2 text-red-600">
-                  <X size={16} />
-                </button>
-              </div>
-            )}
-            {taskToEdit?.file_name && !attachmentFile && (
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-xs font-normal">
-                {removeExistingFile ? (
-                  <span className="text-slate-500">پیوست فعلی هنگام ذخیره حذف می‌شود.</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => taskToEdit.file_path && void downloadApiFile(`/task/${taskToEdit.id}/file`, taskToEdit.file_name!).catch((cause) => setError(cause instanceof Error ? cause.message : "بارگیری فایل ناموفق بود."))}
-                    className="inline-flex min-w-0 items-center gap-2 truncate text-blue-700 hover:underline">
-                    <Paperclip size={14} /> {taskToEdit.file_name} {taskToEdit.file_size ? `(${(Number(taskToEdit.file_size) / (1024 * 1024)).toFixed(1)} MB)` : ""}
-                  </button>
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="عنوان فعالیت را بیان کنید"
+                  className="h-12 rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none placeholder:text-slate-400 focus:border-blue-500"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold text-slate-800">
+                توضیحات
+                <textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="توضیحات فعالیت را بیان کنید"
+                  rows={3}
+                  className="resize-y rounded-lg border border-slate-300 px-3 py-3 text-sm font-normal outline-none placeholder:text-slate-400 focus:border-blue-500"
+                />
+              </label>
+              <div
+                className={`grid gap-4 ${taskToEdit ? "" : "sm:grid-cols-2"}`}
+              >
+                {!taskToEdit && (
+                  <fieldset className="relative z-40 m-0 grid gap-2 border-0 p-0 text-sm font-semibold leading-5 text-slate-800">
+                    <legend className="m-0 p-0">مسئول انجام</legend>
+                    <details className="group relative">
+                      <summary className="flex h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                        <span>
+                          {selectedTeacherIds.length
+                            ? `${selectedTeacherIds.length} کارمند انتخاب شده`
+                            : "کارمندان را انتخاب کنید"}
+                        </span>
+                        <ChevronDown
+                          size={18}
+                          aria-hidden
+                          className="shrink-0 text-slate-500 transition-transform group-open:rotate-180"
+                        />
+                      </summary>
+                      <div className="absolute inset-x-0 top-full z-[70] mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-lg">
+                        {employeesLoading ? (
+                          <p className="px-2 py-3 text-sm font-normal text-slate-500">
+                            در حال بارگذاری کارمندان…
+                          </p>
+                        ) : employeeLoadError ? (
+                          <p className="px-2 py-3 text-sm font-normal text-red-600">
+                            بارگذاری کارمندان ناموفق بود
+                          </p>
+                        ) : teachers.length ? (
+                          <div className="grid gap-2">
+                            {teachers.map((teacher) => {
+                              const checked = selectedTeacherIds.includes(
+                                teacher.id,
+                              );
+                              return (
+                                <label
+                                  key={teacher.id}
+                                  className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm font-normal transition-colors ${checked ? "border-blue-300 bg-blue-50 text-blue-900" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-slate-50"}`}
+                                >
+                                  <span>
+                                    {teacher.f_name} {teacher.l_name}
+                                  </span>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() =>
+                                      setSelectedTeacherIds((current) =>
+                                        checked
+                                          ? current.filter(
+                                              (id) => id !== teacher.id,
+                                            )
+                                          : [...current, teacher.id],
+                                      )
+                                    }
+                                    className="size-4 shrink-0 accent-blue-600"
+                                  />
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="px-2 py-3 text-sm font-normal text-slate-500">
+                            کارمندی برای واگذاری وجود ندارد
+                          </p>
+                        )}
+                      </div>
+                    </details>
+                  </fieldset>
                 )}
+                <label className="grid text-sm font-semibold leading-5 text-slate-800">
+                  تاریخ ختم
+                  <input
+                    type="date"
+                    value={deadline}
+                    min={startDate || undefined}
+                    onChange={(event) => setDeadline(event.target.value)}
+                    className="h-12 rounded-lg border border-slate-300 px-3 text-sm font-normal text-blue-800 outline-none focus:border-blue-500"
+                  />
+                </label>
+              </div>
+              <div className="grid gap-2 text-sm font-semibold text-slate-800">
+                <span>پیوست فایل</span>
+                <label className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 text-xs font-normal text-slate-600 hover:bg-blue-50">
+                  <span className="flex items-center gap-2">
+                    <Upload size={16} /> فایل وظیفه (PDF، Office و تصویر؛ حداکثر
+                    ۲ مگابایت)
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff,.txt,.csv,.md,.rtf,.json,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.zip,.7z,.rar,.gz,.tar,.bz2"
+                    onChange={selectAttachment}
+                    className="sr-only"
+                  />
+                  <Paperclip size={16} />
+                </label>
+                {attachmentFile && (
+                  <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-xs font-normal">
+                    <span className="min-w-0 truncate">
+                      {attachmentFile.name}{" "}
+                      <span className="text-slate-500">
+                        ({(attachmentFile.size / (1024 * 1024)).toFixed(1)} MB)
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="حذف فایل انتخاب‌شده"
+                      onClick={() => setAttachmentFile(null)}
+                      className="mr-2 text-red-600"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+                {taskToEdit?.file_name && !attachmentFile && (
+                  <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-xs font-normal">
+                    {removeExistingFile ? (
+                      <span className="text-slate-500">
+                        پیوست فعلی هنگام ذخیره حذف می‌شود.
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          taskToEdit.file_path &&
+                          void downloadApiFile(
+                            `/task/${taskToEdit.id}/file`,
+                            taskToEdit.file_name!,
+                          ).catch((cause) =>
+                            setError(
+                              cause instanceof Error
+                                ? cause.message
+                                : "بارگیری فایل ناموفق بود.",
+                            ),
+                          )
+                        }
+                        className="inline-flex min-w-0 items-center gap-2 truncate text-blue-700 hover:underline"
+                      >
+                        <Paperclip size={14} /> {taskToEdit.file_name}{" "}
+                        {taskToEdit.file_size
+                          ? `(${(Number(taskToEdit.file_size) / (1024 * 1024)).toFixed(1)} MB)`
+                          : ""}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={
+                        removeExistingFile ? "بازگرداندن پیوست" : "حذف پیوست"
+                      }
+                      onClick={() =>
+                        setRemoveExistingFile((removed) => !removed)
+                      }
+                      className="mr-2 shrink-0 text-red-600"
+                    >
+                      {removeExistingFile ? "بازگرداندن" : <X size={16} />}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="pt-1">
                 <button
-                  type="button"
-                  aria-label={removeExistingFile ? "بازگرداندن پیوست" : "حذف پیوست"}
-                  onClick={() => setRemoveExistingFile((removed) => !removed)}
-                  className="mr-2 shrink-0 text-red-600">
-                  {removeExistingFile ? "بازگرداندن" : <X size={16} />}
+                  disabled={
+                    saving ||
+                    (!taskToEdit &&
+                      (!teachers.length ||
+                        employeesLoading ||
+                        !!employeeLoadError))
+                  }
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Send size={17} />
+                  {saving
+                    ? "در حال ذخیره…"
+                    : taskToEdit
+                      ? "ذخیره تغییرات"
+                      : "ثبت و ارسال فعالیت"}
                 </button>
               </div>
-            )}
-          </div>
-          <div className="flex justify-end gap-3 pt-1">
-            <button type="button" onClick={resetForm} className="h-11 min-w-32 rounded-md border border-slate-300 px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
-              لغو
-            </button>
-            <button disabled={saving || (!taskToEdit && !teachers.length)} className="h-11 min-w-32 rounded-md bg-brand px-5 text-sm font-semibold text-white disabled:opacity-60">
-              {saving ? "در حال ذخیره…" : taskToEdit ? "ذخیره ویرایش" : "اضافه کردن"}
-            </button>
-          </div>
+            </div>
+          </form>
         </div>
-      </form>
       )}
 
       <section className="space-y-3">
         <h2 className="font-bold text-slate-900">فعالیت‌های ثبت‌شده</h2>
         {loading ? (
-          <p className="py-8 text-center text-sm text-slate-500">در حال بارگذاری…</p>
-        ) : tasks.length ? tasks.map((task) => (
-          <article key={task.id} className="flex items-start justify-between gap-4 rounded-lg border border-line bg-white p-4">
-            <div className="min-w-0">
-              <h3 className="font-semibold text-slate-900">{task.title}</h3>
-              {task.description && <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{task.description}</p>}
-              {task.file_name && task.file_path && (
-                <button
-                  type="button"
-                  onClick={() => task.file_path && void downloadApiFile(`/task/${task.id}/file`, task.file_name!).catch((cause) => setError(cause instanceof Error ? cause.message : "بارگیری فایل ناموفق بود."))}
-                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:underline">
-                  <Paperclip size={14} /> {task.file_name}
-                </button>
-              )}
-              <p className="mt-2 text-xs text-slate-500">
-                {[task.start_date && `شروع: ${new Date(`${task.start_date.slice(0, 10)}T12:00:00`).toLocaleDateString("fa-IR")}`, task.deadline && `ختم: ${new Date(task.deadline).toLocaleDateString("fa-IR")}`].filter(Boolean).join(" · ") || "بدون تاریخ"}
-                {" · "}
-                {task.assignments.map((item) => `${item.teacher_f_name} ${item.teacher_l_name} (${({ pending: "در انتظار", in_progress: "در حال انجام", completed: "تکمیل‌شده" } as Record<string, string>)[item.status] ?? item.status})`).join("، ")}
-              </p>
-              {task.assignments.some((item) => item.response) && (
-                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-                  {task.assignments.filter((item) => item.response).map((item) => (
-                    <div key={item.teacher_id} className="rounded-md bg-slate-50 p-3 text-sm">
-                      <p className="text-xs font-semibold text-slate-700">پاسخ {item.teacher_f_name} {item.teacher_l_name}</p>
-                      <p className="mt-1 whitespace-pre-wrap text-slate-600">{item.response}</p>
-                      {item.responded_at && <p className="mt-1 text-[11px] text-slate-400">ارسال‌شده در {new Date(item.responded_at).toLocaleString("fa-IR")}</p>}
-                    </div>
-                  ))}
+          <p className="py-8 text-center text-sm text-slate-500">
+            در حال بارگذاری…
+          </p>
+        ) : tasks.length ? (
+          tasks.map((task) => (
+            <article
+              key={task.id}
+              className="flex flex-col gap-4 rounded-lg border border-line bg-white p-4 sm:flex-row sm:items-start sm:justify-between"
+            >
+              <div className="min-w-0">
+                <h3 className="font-semibold text-slate-900">{task.title}</h3>
+                {task.description && (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">
+                    {task.description}
+                  </p>
+                )}
+                {task.file_name && task.file_path && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      task.file_path &&
+                      void downloadApiFile(
+                        `/task/${task.id}/file`,
+                        task.file_name!,
+                      ).catch((cause) =>
+                        setError(
+                          cause instanceof Error
+                            ? cause.message
+                            : "بارگیری فایل ناموفق بود.",
+                        ),
+                      )
+                    }
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:underline"
+                  >
+                    <Paperclip size={14} /> {task.file_name}
+                  </button>
+                )}
+                <p className="mt-2 text-xs text-slate-500">
+                  {[
+                    task.start_date &&
+                      `شروع: ${new Date(`${task.start_date.slice(0, 10)}T12:00:00`).toLocaleDateString("fa-IR")}`,
+                    task.deadline &&
+                      `ختم: ${new Date(task.deadline).toLocaleDateString("fa-IR")}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "بدون تاریخ"}
+                  {" · "}
+                  کارمندان:{" "}
+                  {task.assignments
+                    .map(
+                      (item) => `${item.teacher_f_name} ${item.teacher_l_name}`,
+                    )
+                    .join("، ") || "بدون واگذاری"}
+                </p>
+                {task.assignments.some((item) => item.response) && (
+                  <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                    {task.assignments
+                      .filter((item) => item.response)
+                      .map((item) => (
+                        <div
+                          key={item.teacher_id}
+                          className="rounded-md bg-slate-50 p-3 text-sm"
+                        >
+                          <p className="text-xs font-semibold text-slate-700">
+                            پاسخ {item.teacher_f_name} {item.teacher_l_name}
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap text-slate-600">
+                            {item.response}
+                          </p>
+                          {item.responded_at && (
+                            <p className="mt-1 text-[11px] text-slate-400">
+                              ارسال‌شده در{" "}
+                              {new Date(item.responded_at).toLocaleString(
+                                "fa-IR",
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex w-full shrink-0 flex-wrap items-start gap-2 sm:w-auto">
+                <details className="group relative">
+                  <summary className="flex min-h-10 min-w-28 cursor-pointer list-none items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 [&::-webkit-details-marker]:hidden">
+                    وضعیت
+                    <ChevronDown
+                      size={16}
+                      aria-hidden
+                      className="text-slate-500 transition-transform group-open:rotate-180"
+                    />
+                  </summary>
+                  <div className="absolute right-0 top-full z-30 mt-1 w-64 max-w-[calc(100vw-3rem)] rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+                    {task.assignments.length ? (
+                      <div className="max-h-48 space-y-2 overflow-y-auto">
+                        {task.assignments.map((item) => (
+                          <div
+                            key={item.teacher_id}
+                            className="flex items-center justify-between gap-3 text-xs"
+                          >
+                            <span className="min-w-0 truncate text-slate-600">
+                              {item.teacher_f_name} {item.teacher_l_name}
+                            </span>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-1 font-medium ${TASK_STATUS_STYLES[item.status] ?? "bg-slate-200 text-slate-700"}`}
+                            >
+                              {TASK_STATUS_LABELS[item.status] ?? item.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500">بدون واگذاری</p>
+                    )}
+                  </div>
+                </details>
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTaskToEdit(task);
+                      setTitle(task.title);
+                      setDescription(task.description ?? "");
+                      setStartDate(
+                        task.start_date ? task.start_date.slice(0, 10) : "",
+                      );
+                      setDeadline(
+                        task.deadline ? task.deadline.slice(0, 10) : "",
+                      );
+                      setAttachmentFile(null);
+                      setRemoveExistingFile(false);
+                      setFormOpen(true);
+                      setError("");
+                    }}
+                    aria-label={`ویرایش وظیفه ${task.title}`}
+                    className="rounded-md px-3 py-2 text-sm text-sky-700 hover:bg-sky-50"
+                  >
+                    ویرایش
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTaskToDelete(task)}
+                    aria-label={`حذف وظیفه ${task.title}`}
+                    className="rounded-md p-2 text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 size={17} />
+                  </button>
                 </div>
-              )}
-            </div>
-            <div className="flex shrink-0 gap-1">
-              <button type="button" onClick={() => {
-                setTaskToEdit(task);
-                setTeacherId(task.assignments[0]?.teacher_id ?? "");
-                setTitle(task.title);
-                setDescription(task.description ?? "");
-                setStartDate(task.start_date ? task.start_date.slice(0, 10) : "");
-                setDeadline(task.deadline ? task.deadline.slice(0, 10) : "");
-                setAttachmentFile(null);
-                setRemoveExistingFile(false);
-                setFormOpen(true);
-                setError("");
-              }} aria-label={`ویرایش وظیفه ${task.title}`} className="rounded-md px-3 py-2 text-sm text-sky-700 hover:bg-sky-50">ویرایش</button>
-              <button type="button" onClick={() => setTaskToDelete(task)} aria-label={`حذف وظیفه ${task.title}`} className="rounded-md p-2 text-red-600 hover:bg-red-50">
-                <Trash2 size={17} />
-              </button>
-            </div>
-          </article>
-        )) : (
-          <p className="rounded-lg border border-line bg-white px-4 py-10 text-center text-sm text-slate-500">هنوز وظیفه‌ای ثبت نشده است.</p>
+              </div>
+            </article>
+          ))
+        ) : (
+          <p className="rounded-lg border border-line bg-white px-4 py-10 text-center text-sm text-slate-500">
+            هنوز وظیفه‌ای ثبت نشده است.
+          </p>
         )}
       </section>
       {taskToDelete && (
