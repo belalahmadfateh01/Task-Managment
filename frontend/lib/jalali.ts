@@ -22,7 +22,10 @@ export function formatJalali(date: Date, sep = " / "): string {
 }
 
 export function formatTime(date: Date, spaced = false): string {
-  const t = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  const t = date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   return spaced ? t.replace(":", " : ") : t;
 }
 
@@ -30,7 +33,6 @@ export function formatClockTime(date: Date): string {
   return date.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
   });
 }
 
@@ -49,7 +51,8 @@ export function endOfDay(date: Date): Date {
 /** First day of the current Jalali month */
 export function startOfJalaliMonth(date: Date): Date {
   const x = startOfDay(date);
-  for (let i = 0; i < 31 && jalaliParts(x).d !== 1; i++) x.setDate(x.getDate() - 1);
+  for (let i = 0; i < 31 && jalaliParts(x).d !== 1; i++)
+    x.setDate(x.getDate() - 1);
   return x;
 }
 
