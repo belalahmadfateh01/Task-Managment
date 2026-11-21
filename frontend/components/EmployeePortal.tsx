@@ -288,10 +288,10 @@ export function EmployeeDashboard() {
             </button>
           </div>
         )} */}
-        <div className="flex item-center justify-between border-b px-6 my-2 py-2 font-semibold">
-          <p>عنوان گزارش</p>
-          <p>وضعیت گزارش</p>
-          <p>تاریخ ارسال</p>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b px-6 my-2 py-2 font-semibold text-sm">
+          <p className="text-right">عنوان گزارش</p>
+          <p className="text-center">وضعیت گزارش</p>
+          <p className="text-left">زمان ارسال</p>
         </div>
 
         {isLoading ? (
@@ -303,7 +303,7 @@ export function EmployeeDashboard() {
             {visibleReports.map((report) => (
               <article
                 key={report.id}
-                className="flex min-h-12 items-center gap-3 px-3 py-2.5 transition-colors hover:bg-slate-50 ">
+                className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-slate-50">
                 <label className="  " title={`انتخاب ${report.title}`}>
                   {/* <input
                     type="checkbox"
@@ -315,20 +315,22 @@ export function EmployeeDashboard() {
                 </label>
                 <Link
                   href={`/employee/reports/${report.id}`}
-                  className="min-w-0 flex-1 text-right text-xs font-medium text-slate-700 hover:text-sky-700">
+                  className="col-start-1 min-w-0 text-right text-xs font-medium text-slate-700 hover:text-sky-700">
                   <span className="block truncate">{report.title}</span>
                   <span className="mt-1 block text-[10px] font-normal text-slate-500 sm:hidden">
                     {reportDate(report.createdAt)}
                   </span>
                 </Link>
-                <StatusBadge status={report.status} compact />
-                <div
-                  dir="ltr"
-                  className="hidden min-w-0 items-center justify-start gap-3 text-[11px] text-slate-500 sm:flex">
-                  <span>{reportDate(report.createdAt)}</span>
+                <div className="col-start-2 justify-self-center">
+                  <StatusBadge status={report.status} />
+                </div>
+                <div className="col-start-3 flex min-w-0 items-center justify-end gap-3 text-[11px] text-slate-500">
                   {report.attachment && (
                     <Paperclip size={15} aria-label="پیوست دارد" />
                   )}
+                  <span className="whitespace-nowrap">
+                    {reportDate(report.createdAt)}
+                  </span>
                 </div>
               </article>
             ))}
@@ -1108,6 +1110,9 @@ export function EmployeeTasksPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [responses, setResponses] = useState<Record<string, string>>({});
+  const [responseFiles, setResponseFiles] = useState<
+    Record<string, File | null>
+  >({});
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [submittingTaskId, setSubmittingTaskId] = useState<string | null>(null);
 
@@ -1136,13 +1141,16 @@ export function EmployeeTasksPage() {
     setNotice("");
     setSubmittingTaskId(task.id);
     try {
+      const body = new FormData();
+      body.append("response", response);
+      if (responseFiles[task.id]) body.append("file", responseFiles[task.id]!);
       const assignment = await api<{
         response: string;
         responded_at: string;
         completed_at: string | null;
       }>(`/task/${task.id}/response`, {
         method: "PATCH",
-        body: JSON.stringify({ response }),
+        body,
       });
       setTasks((current) =>
         current.map((item) =>
@@ -1166,6 +1174,7 @@ export function EmployeeTasksPage() {
         ...current,
         [task.id]: assignment.response,
       }));
+      setResponseFiles((current) => ({ ...current, [task.id]: null }));
       setActiveTaskId(null);
       setNotice("پاسخ فعالیت به‌صورت گزارش برای مدیر ارسال شد.");
     } catch (cause) {
@@ -1312,52 +1321,6 @@ export function EmployeeTasksPage() {
                         {task.file_name}
                       </button>
                     )}
-                    {isActive && (
-                      <div className="mt-3 border-t border-slate-100 pt-3">
-                        {assignment?.responded_at && (
-                          <p className="mb-2 text-[11px] text-slate-500">
-                            گزارش قبلی ثبت شده است؛ متن را ویرایش و دوباره
-                            بفرستید.
-                          </p>
-                        )}
-                        <label className="grid gap-2 text-xs font-medium text-slate-700">
-                          گزارش کار
-                          <textarea
-                            value={
-                              responses[task.id] ?? assignment?.response ?? ""
-                            }
-                            onChange={(event) =>
-                              setResponses((current) => ({
-                                ...current,
-                                [task.id]: event.target.value,
-                              }))
-                            }
-                            maxLength={20000}
-                            rows={3}
-                            placeholder="کار انجام‌شده را شرح دهید…"
-                            className="resize-y rounded-md border border-slate-200 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-500"
-                          />
-                        </label>
-                        <div className="mt-2 flex justify-start gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setActiveTaskId(null)}
-                            className="h-9 rounded-md border border-red-200 px-3 text-xs text-red-600 hover:bg-red-50">
-                            لغو
-                          </button>
-                          <button
-                            type="button"
-                            disabled={submittingTaskId === task.id}
-                            onClick={() => void submitResponse(task)}
-                            className="inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
-                            <Send size={13} />{" "}
-                            {submittingTaskId === task.id
-                              ? "در حال ارسال…"
-                              : "ارسال برای مدیر"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </article>
                 );
               })
@@ -1368,6 +1331,105 @@ export function EmployeeTasksPage() {
             )}
           </section>
 
+          {activeTaskId &&
+            (() => {
+              const task = tasks.find((item) => item.id === activeTaskId);
+              if (!task) return null;
+              const assignment = task.assignments[0];
+              return (
+                <div
+                  className="fixed inset-0 z-[70] grid place-items-center bg-slate-900/45 p-4"
+                  onMouseDown={(event) =>
+                    event.target === event.currentTarget &&
+                    setActiveTaskId(null)
+                  }>
+                  <section
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="task-response-title"
+                    className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2
+                        id="task-response-title"
+                        className="text-base font-bold text-slate-900">
+                        پاسخ به فعالیت: {task.title}
+                      </h2>
+                      <button
+                        type="button"
+                        aria-label="بستن"
+                        onClick={() => setActiveTaskId(null)}
+                        className="rounded p-1 text-red-500 hover:bg-red-100">
+                        <X size={18} />
+                      </button>
+                    </div>
+                    {error && (
+                      <p
+                        role="alert"
+                        className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+                        {error}
+                      </p>
+                    )}
+                    {assignment?.responded_at && (
+                      <p className="mt-3 text-xs text-slate-500">
+                        پاسخ قبلی ثبت شده است؛ می‌توانید آن را ویرایش و دوباره
+                        ارسال کنید.
+                      </p>
+                    )}
+                    <label className="mt-4 grid gap-2 text-xs font-medium text-slate-700">
+                      <textarea
+                        value={responses[task.id] ?? assignment?.response ?? ""}
+                        onChange={(event) =>
+                          setResponses((current) => ({
+                            ...current,
+                            [task.id]: event.target.value,
+                          }))
+                        }
+                        maxLength={20000}
+                        rows={5}
+                        placeholder="کار انجام‌شده را شرح دهید…"
+                        className="resize-y rounded-md border border-slate-200 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-3 text-xs text-slate-600 hover:bg-slate-50">
+                      <Upload size={16} />
+                      <span>
+                        {responseFiles[task.id]?.name ??
+                          "افزودن فایل یا عکس (حداکثر ۱۵ مگابایت)"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                        className="sr-only"
+                        onChange={(event) =>
+                          setResponseFiles((current) => ({
+                            ...current,
+                            [task.id]: event.target.files?.[0] ?? null,
+                          }))
+                        }
+                      />
+                    </label>
+                    <div className="mt-5 flex justify-start gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTaskId(null)}
+                        className="h-9 rounded-md border border-slate-200 px-4 text-xs text-slate-600 hover:bg-slate-50">
+                        انصراف
+                      </button>
+                      <button
+                        type="button"
+                        disabled={submittingTaskId === task.id}
+                        onClick={() => void submitResponse(task)}
+                        className="inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+                        <Send size={13} />
+                        {submittingTaskId === task.id
+                          ? "در حال ارسال…"
+                          : "ثبت و ارسال پاسخ"}
+                      </button>
+                    </div>
+                  </section>
+                </div>
+              );
+            })()}
           <aside className="rounded-lg border border-slate-200 bg-white p-4">
             <h3 className="text-sm font-bold text-slate-800">خلاصه این هفته</h3>
             <div className="mt-4 space-y-3 text-xs text-slate-500">

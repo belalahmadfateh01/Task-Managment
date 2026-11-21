@@ -187,7 +187,7 @@ const updateTaskStatus = async (taskId, teacherId, status) => {
   }
 };
 
-const submitTaskResponse = async (taskId, teacherId, response) => {
+const submitTaskResponse = async (taskId, teacherId, response, attachment = null) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -209,16 +209,18 @@ const submitTaskResponse = async (taskId, teacherId, response) => {
     if (reportId && assignedTask.report_status === "pending") {
       await client.query(
         `UPDATE reports
-                 SET title = $1, text = $2, updated_at = CURRENT_TIMESTAMP, archived_at = NULL
-                 WHERE id = $3`,
-        [reportTitle, reportText, reportId],
+                 SET title = $1, text = $2,
+                     file_name = COALESCE($3, file_name), file_path = COALESCE($4, file_path), file_size = COALESCE($5, file_size),
+                     updated_at = CURRENT_TIMESTAMP, archived_at = NULL
+                 WHERE id = $6`,
+        [reportTitle, reportText, attachment?.file_name ?? null, attachment?.file_path ?? null, attachment?.file_size ?? null, reportId],
       );
     } else {
       const { rows: reports } = await client.query(
         `INSERT INTO reports (id, status, title, text, file_name, file_path, file_size, teacher_id)
-                 VALUES (gen_random_uuid(), 'pending', $1, $2, NULL, NULL, NULL, $3)
+                 VALUES (gen_random_uuid(), 'pending', $1, $2, $3, $4, $5, $6)
                  RETURNING id`,
-        [reportTitle, reportText, teacherId],
+        [reportTitle, reportText, attachment?.file_name ?? null, attachment?.file_path ?? null, attachment?.file_size ?? null, teacherId],
       );
       reportId = reports[0].id;
     }

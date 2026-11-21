@@ -34,7 +34,12 @@ const updateTaskStatusController = catchAsyncError(async (req, res) => {
 });
 
 const submitTaskResponseController = catchAsyncError(async (req, res) => {
-    const assignment = await submitTaskResponse(req.params.id, req.employee.id, req.body.response);
+    const attachment = req.file ? {
+        file_name: path.basename(req.file.originalname.replaceAll("\\", "/")).slice(0, 512),
+        file_path: req.file.filename,
+        file_size: req.file.size,
+    } : null;
+    const assignment = await submitTaskResponse(req.params.id, req.employee.id, req.body.response, attachment);
     res.status(200).json({ success: true, statusCode: 200, message: assignment });
 });
 

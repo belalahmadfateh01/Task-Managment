@@ -78,6 +78,7 @@ export default function TasksView() {
   const [error, setError] = useState("");
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [statusTask, setStatusTask] = useState<Task | null>(null);
   const menusContainerRef = useRef<HTMLDivElement>(null);
   // The admin-only /employee endpoint already returns teachers only.
   const teachers = employees;
@@ -627,17 +628,21 @@ export default function TasksView() {
               </div>
               <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
                 <div className="flex flex-wrap items-center  gap-1.5">
-                  {task.assignments.length ? (
+                  {task.assignments.length > 1 ? (
+                    <div className="flex flex-col items-start gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setStatusTask(task)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                        وضعیت
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                  ) : task.assignments.length === 1 ? (
                     task.assignments.map((item) => (
                       <span
                         key={item.teacher_id}
                         className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${TASK_STATUS_STYLES[item.status] ?? "bg-slate-200 text-slate-700"}`}>
-                        {task.assignments.length > 1 && (
-                          <>
-                            {item.teacher_f_name} {item.teacher_l_name}:{" "}
-                          </>
-                        )}
-
                         {TASK_STATUS_LABELS[item.status] ?? item.status}
                       </span>
                     ))
@@ -685,6 +690,58 @@ export default function TasksView() {
           </p>
         )}
       </section>
+      {statusTask && (
+        <div
+          className="fixed inset-0 z-[70] grid place-items-center bg-slate-900/45 p-4"
+          onMouseDown={(event) =>
+            event.target === event.currentTarget && setStatusTask(null)
+          }>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="task-status-title"
+            className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl">
+            <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <h2 id="task-status-title" className="font-bold text-slate-900">
+                  وضعیت فعالیت
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">{statusTask.title}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="بستن"
+                onClick={() => setStatusTask(null)}
+                className="rounded-md p-2 text-red-500 hover:bg-red-100">
+                <X size={18} />
+              </button>
+            </header>
+            <div className="max-h-[60vh] space-y-2 overflow-y-auto p-5">
+              {statusTask.assignments.map((item) => (
+                <div
+                  key={item.teacher_id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-4 py-3">
+                  <span className="text-sm font-medium text-slate-800">
+                    {item.teacher_f_name} {item.teacher_l_name}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${TASK_STATUS_STYLES[item.status] ?? "bg-slate-200 text-slate-700"}`}>
+                    {TASK_STATUS_LABELS[item.status] ?? item.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <footer className="flex justify-end border-t border-slate-100 px-5 py-3">
+              {/* <button
+                type="button"
+                onClick={() => setStatusTask(null)}
+                className="rounded-md bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+                بستن
+              </button> */}
+            </footer>
+          </section>
+        </div>
+      )}
       {taskToDelete && (
         <Dialog
           title="حذف وظیفه"
