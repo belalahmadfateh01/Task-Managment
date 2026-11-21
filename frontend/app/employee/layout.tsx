@@ -3,13 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  CalendarDays,
-  CheckSquare,
-  House,
-  PenLine,
-  Plus,
-} from "lucide-react";
+import { CalendarDays, CheckSquare, House, PenLine, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { clearSession, readSession } from "@/lib/clientStore";
 import { api, apiAssetUrl } from "@/lib/api";
@@ -45,21 +39,32 @@ export default function EmployeeLayout({
       router.replace("/dashboard");
       return;
     }
-    const loadEmployee = () => api<Record<string, unknown>>(`/employee/${session.employeeId}`)
-      .then((item) => setEmployee({
-        id: session.employeeId,
-        name: [item.f_name, item.l_name].filter(Boolean).join(" "),
-        email: String(item.email ?? ""),
-        avatar: apiAssetUrl(typeof item.image === "string" ? item.image : null),
-        joinedAt: String(item.created_at ?? "").slice(0, 10),
-        phone: typeof item.phone === "string" ? item.phone : undefined,
-      }))
-      .catch(() => { clearSession(); router.replace("/login"); })
-      .finally(() => setAccessChecked(true));
+    const loadEmployee = () =>
+      api<Record<string, unknown>>(`/employee/${session.employeeId}`)
+        .then((item) =>
+          setEmployee({
+            id: session.employeeId,
+            name: [item.f_name, item.l_name].filter(Boolean).join(" "),
+            email: String(item.email ?? ""),
+            avatar: apiAssetUrl(
+              typeof item.image === "string" ? item.image : null,
+            ),
+            joinedAt: String(item.created_at ?? "").slice(0, 10),
+            phone: typeof item.phone === "string" ? item.phone : undefined,
+          }),
+        )
+        .catch(() => {
+          clearSession();
+          router.replace("/login");
+        })
+        .finally(() => setAccessChecked(true));
     void loadEmployee();
-    const onProfileUpdated = () => { void loadEmployee(); };
+    const onProfileUpdated = () => {
+      void loadEmployee();
+    };
     window.addEventListener("profile-updated", onProfileUpdated);
-    return () => window.removeEventListener("profile-updated", onProfileUpdated);
+    return () =>
+      window.removeEventListener("profile-updated", onProfileUpdated);
   }, [router]);
 
   useEffect(() => {
@@ -85,9 +90,9 @@ export default function EmployeeLayout({
 
   return (
     <div dir="rtl" className="h-screen overflow-hidden bg-surface">
-      <div className="grid h-screen grid-cols-[76px_minmax(0,1fr)] xl:grid-cols-[clamp(210px,15vw,270px)_minmax(0,1fr)]">
+      <div className="grid h-screen grid-cols-[clamp(210px,15vw,270px)_minmax(0,1fr)]">
         <div className="sticky top-0 h-screen">
-          <aside className="sticky top-0 flex h-screen flex-col gap-6 bg-brand px-3 py-5 text-white xl:gap-8 xl:px-5">
+          <aside className="sticky top-0 flex h-screen flex-col gap-8 bg-brand px-5 py-5 text-white">
             <div className="flex flex-col gap-4">
               <Link
                 href="/employee/dashboard"
@@ -99,14 +104,14 @@ export default function EmployeeLayout({
                   height={36}
                   aria-hidden
                 />
-                <span className="max-xl:hidden">گزارش یار</span>
+                <span>گزارش یار</span>
               </Link>
               <Link
                 href="/employee/reports/new"
                 title="گزارش جدید"
-                className="flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-2 text-sm font-semibold text-brand-deep hover:bg-blue-50 max-xl:mx-auto max-xl:w-11 max-xl:px-0">
+                className="flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-2 text-sm font-semibold text-brand-deep hover:bg-blue-50">
                 <Plus size={17} />
-                <span className="max-xl:hidden">گزارش جدید</span>
+                <span>گزارش جدید</span>
               </Link>
             </div>
             <nav aria-label="منوی کارمند" className="flex flex-col gap-1.5">
@@ -119,13 +124,13 @@ export default function EmployeeLayout({
                     href={href}
                     title={label}
                     aria-current={active ? "page" : undefined}
-                    className={`relative flex items-center gap-3 px-3.5 py-3 font-medium transition-colors max-xl:justify-center max-xl:px-0 ${
+                    className={`relative flex items-center gap-3 px-3.5 py-3 font-medium transition-colors ${
                       active
                         ? "w-[calc(100%+20px)] rounded-r-xl bg-white text-brand-deep shadow-sm"
                         : "w-[calc(100%+20px)] rounded-r-xl hover:bg-white/15"
                     }`}>
                     <Icon size={22} strokeWidth={1.6} aria-hidden />
-                    <span className="max-xl:hidden">{label}</span>
+                    <span>{label}</span>
                   </Link>
                 );
               })}
@@ -143,7 +148,9 @@ export default function EmployeeLayout({
               <div className="hidden items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 sm:flex">
                 <CalendarDays size={15} />
                 <span>{now ? formatJalali(now) : "—"}</span>
-                <span className="text-blue-600">{now ? formatClockTime(now) : ""}</span>
+                <span className="text-blue-600">
+                  {now ? formatClockTime(now) : ""}
+                </span>
               </div>
               <NotificationBell />
               <ProfileEditor />

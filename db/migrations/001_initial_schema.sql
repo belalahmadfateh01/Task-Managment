@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS employees (
     role varchar(20) NOT NULL CHECK (role IN ('admin', 'teacher')),
     phone varchar(32),
     image text,
+    is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -61,7 +61,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div
       className="h-screen overflow-hidden bg-surface"
       style={{ ["--gap" as string]: "clamp(14px,1.5vw,24px)" }}>
-      <div className="grid h-screen grid-cols-[76px_minmax(0,1fr)] xl:grid-cols-[clamp(210px,15vw,270px)_minmax(0,1fr)]">
+      <div className="grid h-screen grid-cols-[230px_minmax(0,1fr)]">
         <div className="sticky top-0 h-screen">
           <Sidebar />
         </div>

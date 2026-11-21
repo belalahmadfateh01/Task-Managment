@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { formatClockTime, formatJalali } from "@/lib/jalali";
 import NotificationBell from "@/components/NotificationBell";
 import ProfileEditor from "@/components/ProfileEditor";
+import { link } from "fs";
 
 type HeaderProps = {
   title?: string;
@@ -32,11 +33,11 @@ export default function Header({
       <div className="flex flex-row-reverse items-center gap-3">
         <ProfileEditor />
         <NotificationBell />
-        <div className="flex h-11 items-center gap-2.5 rounded-xl border border-line px-3.5 font-medium text-slate-700">
+        <div className="flex h-11 w-53 items-center content-center  gap-2.5 rounded-xl border border-line px-3.5 font-medium text-slate-700">
           <CalendarDays size={18} strokeWidth={1.6} aria-hidden />
           <span className="max-md:hidden">{now ? formatJalali(now) : "—"}</span>
           <i className="h-5 w-px bg-line max-md:hidden" />
-          <b className="font-semibold text-sky-600">
+          <b className="font-semibold text-sky-600 tabular-nums">
             {now ? formatClockTime(now) : ""}
           </b>
         </div>

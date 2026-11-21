@@ -44,6 +44,7 @@ export default function EmployeesView() {
             lastLoginAt: row.last_login_at
               ? String(row.last_login_at)
               : undefined,
+            active: row.is_active !== false,
           })),
         ),
       )
@@ -65,19 +66,26 @@ export default function EmployeesView() {
     );
   };
 
-  const removeEmployee = async (id: string | number) => {
+  const setEmployeeActive = async (id: string | number, active: boolean) => {
     setError("");
     try {
-      await api(`/employee/${id}`, { method: "DELETE" });
+      await api(`/employee/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: active }),
+      });
       setEmployees((current) =>
-        current.filter((employee) => employee.id !== id),
+        current.map((employee) =>
+          employee.id === id ? { ...employee, active } : employee,
+        ),
       );
       setSelectedIds((current) =>
-        current.filter((selectedId) => selectedId !== id),
+        active ? current : current.filter((selectedId) => selectedId !== id),
       );
     } catch (cause) {
       setError(
-        cause instanceof Error ? cause.message : "حذف کارمند ناموفق بود.",
+        cause instanceof Error
+          ? cause.message
+          : "تغییر وضعیت کارمند ناموفق بود.",
       );
     }
   };
@@ -86,13 +94,22 @@ export default function EmployeesView() {
     setError("");
     const ids = [...selectedIds];
     const results = await Promise.allSettled(
-      ids.map((id) => api(`/employee/${id}`, { method: "DELETE" })),
+      ids.map((id) =>
+        api(`/employee/${id}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ is_active: false }),
+        }),
+      ),
     );
     const deletedIds = ids.filter(
       (_id, index) => results[index].status === "fulfilled",
     );
     setEmployees((current) =>
-      current.filter((employee) => !deletedIds.includes(employee.id)),
+      current.map((employee) =>
+        deletedIds.includes(employee.id)
+          ? { ...employee, active: false }
+          : employee,
+      ),
     );
     setSelectedIds((current) =>
       current.filter((id) => !deletedIds.includes(id)),
@@ -173,6 +190,7 @@ export default function EmployeesView() {
             typeof created.address === "string"
               ? created.address
               : employee.address,
+          active: true,
         },
       ]);
       setView("list");
@@ -221,8 +239,7 @@ export default function EmployeesView() {
       {error && (
         <p
           role="alert"
-          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
-        >
+          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </p>
       )}
@@ -231,9 +248,8 @@ export default function EmployeesView() {
           <button
             type="button"
             onClick={() => setConfirmBulkDelete(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100"
-          >
-            <Trash2 size={16} /> حذف {selectedIds.length} کارمند
+            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100">
+            <Trash2 size={16} /> غیرفعال کردن {selectedIds.length} کارمند
           </button>
         ) : (
           <span></span>
@@ -241,8 +257,7 @@ export default function EmployeesView() {
         <button
           type="button"
           onClick={() => setView("add")}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-deep"
-        >
+          className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-deep">
           <Plus size={18} /> افزودن کارمند
         </button>
       </div>
@@ -255,9 +270,9 @@ export default function EmployeesView() {
           employees={employees}
           selectedIds={selectedIds}
           onToggle={toggleSelection}
-          onDelete={(id) => {
-            const employee = employees.find((row) => row.id === id);
-            if (employee) setEmployeeToDelete(employee);
+          onToggleStatus={(employee) => {
+            if (employee.active) setEmployeeToDelete(employee);
+            else void setEmployeeActive(employee.id, true);
           }}
           onOpen={(employee) => {
             setActiveEmployee(employee);
@@ -267,23 +282,33 @@ export default function EmployeesView() {
       )}
       {employeeToDelete && (
         <Dialog
-          title="حذف کارمند"
-          description={`حذف ${employeeToDelete.name}، گزارش‌ها و وظایف واگذارشده‌ی او را هم پاک می‌کند. این کار قابل بازگشت نیست.`}
-          confirmLabel="حذف کارمند"
+          title="غیرفعال کردن کارمند"
+          description={`کارمند ${employeeToDelete.name} غیرفعال می‌شود، اما اطلاعات، گزارش‌ها و فعالیت‌های او حفظ می‌شوند. می‌توانید بعداً دوباره او را فعال کنید.`}
+          confirmLabel="غیرفعال کردن"
           danger
           onClose={() => setEmployeeToDelete(null)}
           onConfirm={() => {
             const id = employeeToDelete.id;
             setEmployeeToDelete(null);
-            void removeEmployee(id);
+            void setEmployeeActive(id, false);
           }}
         />
       )}
       {confirmBulkDelete && (
         <Dialog
-          title="حذف گروهی کارمندان"
-          description={`حذف ${selectedIds.length} کارمند، گزارش‌ها و وظایف واگذارشده‌ی آنان را هم پاک می‌کند. این کار قابل بازگشت نیست.`}
-          confirmLabel="حذف همه"
+          title={
+            selectedIds.length > 1
+              ? "غیرفعال کردن چندین کارمند"
+              : "غیرفعال کردن کارمند"
+          }
+          description={
+            selectedIds.length > 1
+              ? `${selectedIds.length} کارمند غیرفعال می‌شوند، اما اطلاعات و سوابق آنان حفظ می‌شوند.`
+              : "کارمند انتخاب‌شده غیرفعال می‌شود، اما اطلاعات و سوابق او حفظ می‌شوند."
+          }
+          confirmLabel={
+            selectedIds.length > 1 ? "غیرفعال کردن همه" : "غیرفعال کردن"
+          }
           danger
           onClose={() => setConfirmBulkDelete(false)}
           onConfirm={() => void removeSelectedEmployees()}

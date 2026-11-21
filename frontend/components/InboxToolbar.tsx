@@ -38,23 +38,21 @@ export default function InboxToolbar({
               tab === activeTab
                 ? "rounded-2xl bg-[#23B2EF] text-white shadow-[0_8px_20px_rgba(29,155,240,0.35)]"
                 : "text-[#485261]"
-            }`}
-          >
+            }`}>
             {tab}
           </button>
         ))}
       </div>
 
       <div className="flex flex-row-reverse items-center gap-1">
-        <button
+        {/* <button
           type="button"
           onClick={onToggleAllItems}
           aria-label={
             allItemsSelected ? "لغو انتخاب همه موارد" : "انتخاب همه موارد"
           }
           aria-pressed={allItemsSelected}
-          className="relative flex h-10 w-10 items-center justify-center"
-        >
+          className="relative flex h-10 w-10 items-center justify-center">
           <img src="/imges/checkbox.svg" alt="" className="h-5 w-5" />
           {allItemsSelected && (
             <Check
@@ -64,15 +62,14 @@ export default function InboxToolbar({
               className="absolute text-black"
             />
           )}
-        </button>
+        </button> */}
 
         <div className="relative">
           <button
             type="button"
             onClick={onToggleFilterMenu}
             aria-expanded={isOpen}
-            className="flex items-center gap-3 px-4 py-2 text-[15px] font-medium text-[#111827]"
-          >
+            className="flex items-center gap-3 px-4 py-2 text-[15px] font-medium text-[#111827]">
             <span className="font-bold">صندوق ورودی</span>
             <span className="flex h-7 w-7 items-center justify-center">
               <img
@@ -94,8 +91,7 @@ export default function InboxToolbar({
                     selectedFilter === option
                       ? "border-[#D9E8FF] bg-[#EAF4FF] text-[#23B2EF]"
                       : "text-[#374151] hover:bg-[#F3F6FB]"
-                  }`}
-                >
+                  }`}>
                   {option}
                 </button>
               ))}
