@@ -3,6 +3,7 @@ import authentication from "../middlewares/authentication.js";
 import authorization from "../middlewares/authorization.js";
 import { validate, schemas } from "../middlewares/validate.js";
 import taskUpload from "../middlewares/task-upload.middleware.js";
+import reportUpload from "../middlewares/report-upload.middleware.js";
 import cleanupUploadedFile from "../middlewares/cleanup-upload.js";
 import {
     createTaskController, deleteTaskController, getTaskByIdController,
@@ -33,7 +34,7 @@ router.get("/:id/file", authorization("admin", "teacher"), validate(schemas.id),
 router.get("/:id", authorization("admin", "teacher"), validate(schemas.id), getTaskByIdController);
 router.post("/", authorization("admin"), taskUpload, cleanupUploadedFile, normalizeTaskMultipartFields, validate(schemas.task), createTaskController);
 router.patch("/:id/status", authorization("teacher"), validate(schemas.id), validate(schemas.taskStatus), updateTaskStatusController);
-router.patch("/:id/response", authorization("teacher"), validate(schemas.id), validate(schemas.taskResponse), submitTaskResponseController);
+router.patch("/:id/response", authorization("teacher"), validate(schemas.id), reportUpload, cleanupUploadedFile, validate(schemas.taskResponse), submitTaskResponseController);
 router.patch("/:id", authorization("admin"), validate(schemas.id), taskUpload, cleanupUploadedFile, normalizeTaskMultipartFields, validate(schemas.taskUpdate), updateTaskController);
 router.delete("/:id", authorization("admin"), validate(schemas.id), deleteTaskController);
 

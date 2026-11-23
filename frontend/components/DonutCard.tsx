@@ -2,6 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import {
   PERIOD_KEYS,
   PERIOD_LABEL,
@@ -10,7 +11,6 @@ import {
   STATUS_ORDER,
 } from "@/lib/labels";
 import type { CustomRange, DateRange, PeriodKey, Status } from "@/lib/types";
-import { formatJalali } from "@/lib/jalali";
 
 interface Props {
   period: PeriodKey;
@@ -21,49 +21,43 @@ interface Props {
   counts: Record<Status, number>;
 }
 
-const R = 100;
-const SW = 26; // stroke width
-const C = 2 * Math.PI * R;
-
 function Donut({ counts }: { counts: Record<Status, number> }) {
-  const total = STATUS_ORDER.reduce((s, k) => s + counts[k], 0);
-  const segs = STATUS_ORDER.filter((k) => counts[k] > 0);
-  const gap = segs.length > 1 ? 14 : 0;
-  let acc = 0;
+  const total = STATUS_ORDER.reduce((sum, status) => sum + counts[status], 0);
+  const data = STATUS_ORDER.map((status) => ({
+    status,
+    value: counts[status],
+  })).filter((item) => item.value > 0);
 
   return (
-    <div className="relative mx-auto my-1.5 aspect-square w-full max-w-[300px]">
-      <svg
-        viewBox="0 0 260 260"
-        role="img"
-        aria-label={`مجموع گزارش‌ها: ${total}`}
-        className="size-full"
-      >
-        <g
-          transform="translate(130 130) rotate(-90)"
-          fill="none"
-          strokeWidth={SW}
-          strokeLinecap="round"
-        >
-          {total === 0 && <circle r={R} stroke="#e2e8f0" />}
-          {segs.map((k) => {
-            const visible = Math.max((counts[k] / total) * C - gap, SW + 0.5);
-            const dash = visible - SW; // round caps add SW to the visible length
-            const offset = -(acc + gap / 2 + SW / 2);
-            acc += (counts[k] / total) * C;
-            return (
-              <circle
-                key={k}
-                r={R}
-                stroke={STATUS_COLOR[k]}
-                strokeDasharray={`${dash} ${C}`}
-                strokeDashoffset={offset}
-              />
-            );
-          })}
-        </g>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
+    <div
+      role="img"
+      aria-label={`مجموع گزارش‌ها: ${total}`}
+      className="relative mx-auto my-1.5 aspect-square w-full max-w-[300px]">
+      {total > 0 ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="status"
+              cx="50%"
+              cy="50%"
+              innerRadius="72%"
+              outerRadius="92%"
+              paddingAngle={3}
+              startAngle={90}
+              endAngle={-270}
+              stroke="none">
+              {data.map((item) => (
+                <Cell key={item.status} fill={STATUS_COLOR[item.status]} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="absolute inset-[8%] rounded-full bg-slate-200" />
+      )}
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <strong className="text-[2em] leading-tight">
           {total.toLocaleString("en-US")}
         </strong>
@@ -111,8 +105,7 @@ export default function DonutCard({
   return (
     <section
       aria-label="نمودار گزارش‌ها"
-      className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-[clamp(16px,1.6vw,28px)] md:max-lap:grid md:max-lap:grid-cols-[minmax(200px,300px)_1fr] md:max-lap:items-center md:max-lap:gap-x-8"
-    >
+      className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-[clamp(16px,1.6vw,28px)] md:max-lap:grid md:max-lap:grid-cols-[minmax(200px,300px)_1fr] md:max-lap:items-center md:max-lap:gap-x-8">
       <div className="flex flex-col gap-1 md:max-lap:col-span-full">
         <div ref={periodMenuRef} className="relative self-start">
           <button
@@ -122,8 +115,7 @@ export default function DonutCard({
             aria-expanded={periodMenuOpen}
             aria-label="بازه گزارش"
             onClick={() => setPeriodMenuOpen((open) => !open)}
-            className="inline-flex cursor-pointer items-center gap-1.5 py-1 text-[1.2em] font-bold text-slate-900"
-          >
+            className="inline-flex cursor-pointer items-center gap-1.5 py-1 text-[1.2em] font-bold text-slate-900">
             <ChevronDown
               size={18}
               aria-hidden
@@ -135,8 +127,7 @@ export default function DonutCard({
             <div
               role="listbox"
               aria-label="بازه گزارش"
-              className="absolute right-0 top-full z-20 mt-2 min-w-max rounded-xl border border-line bg-white p-1.5 text-right shadow-xl"
-            >
+              className="absolute right-0 top-full z-20 mt-2 min-w-max rounded-xl border border-line bg-white p-1.5 text-right shadow-xl">
               {PERIOD_KEYS.map((key) => (
                 <button
                   key={key}
@@ -152,8 +143,7 @@ export default function DonutCard({
                     period === key
                       ? "font-bold text-slate-900"
                       : "font-normal text-slate-500"
-                  }`}
-                >
+                  }`}>
                   {PERIOD_LABEL[key]}
                 </button>
               ))}

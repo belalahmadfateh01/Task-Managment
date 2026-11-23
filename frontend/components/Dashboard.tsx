@@ -7,7 +7,7 @@ import {
   MessageSquareText,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api, apiAllPages, apiAssetUrl } from "@/lib/api";
 import { toInputDate } from "@/lib/jalali";
 import { STATUS_ORDER } from "@/lib/labels";
@@ -22,6 +22,7 @@ interface MenuState {
   id: string;
   top: number;
   left: number;
+  anchorTop: number;
 }
 interface DialogState {
   kind: "feedback" | "delete";
@@ -114,6 +115,17 @@ export default function Dashboard() {
     };
   }, [menu]);
 
+  useLayoutEffect(() => {
+    if (!menu || !menuRef.current) return;
+    const bounds = menuRef.current.getBoundingClientRect();
+    if (bounds.bottom > window.innerHeight - 8) {
+      const top = Math.max(8, menu.anchorTop - bounds.height - 6);
+      setMenu((current) => current?.id === menu.id && current.top !== top
+        ? { ...current, top }
+        : current);
+    }
+  }, [menu?.id]);
+
   const patch = (id: string, fn: (r: Report) => Report) =>
     setReports((rs) => rs.map((r) => (r.id === id ? fn(r) : r)));
 
@@ -121,10 +133,7 @@ export default function Dashboard() {
     if (menu?.id === report.id) return setMenu(null);
     const b = button.getBoundingClientRect();
     const left = Math.min(Math.max(8, b.left), window.innerWidth - MENU_W - 8);
-    const below = b.bottom + 6;
-    const top =
-      below + 190 > window.innerHeight ? Math.max(8, b.top - 190 - 6) : below;
-    setMenu({ id: report.id, top, left });
+    setMenu({ id: report.id, top: b.bottom + 6, left, anchorTop: b.top });
   };
 
   const menuReport = menu ? reports.find((r) => r.id === menu.id) : undefined;

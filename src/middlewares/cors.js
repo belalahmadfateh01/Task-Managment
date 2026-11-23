@@ -1,9 +1,22 @@
+const normalizeOrigin = (value) => {
+    try {
+        return new URL(value).origin;
+    } catch {
+        return null;
+    }
+};
+
 const createCorsMiddleware = (origins) => {
-    const allowedOrigins = new Set(origins);
+    const allowedOrigins = new Set(origins.map(normalizeOrigin).filter(Boolean));
     return (req, res, next) => {
         const origin = req.headers.origin;
-        if (origin && !allowedOrigins.has(origin)) {
-            return res.status(403).json({ success: false, statusCode: 403, message: "Origin is not allowed" });
+        if (origin && !allowedOrigins.has(normalizeOrigin(origin))) {
+            console.warn(`Blocked request from unconfigured origin: ${origin}`);
+            return res.status(403).json({
+                success: false,
+                statusCode: 403,
+                message: `Origin is not allowed: ${origin}. Add it to CLIENT_ORIGINS.`,
+            });
         }
         if (origin) {
             res.setHeader("Access-Control-Allow-Origin", origin);

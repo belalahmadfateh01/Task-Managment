@@ -3,13 +3,13 @@ import Link from "next/link";
 
 export default function Start() {
   return (
-    <main className="grid min-h-screen w-full grid-cols-1 md:grid-cols-2">
-      <section className="flex min-h-[50vh] flex-col items-center justify-center gap-6 bg-[#3F8EFC] px-6 py-10 text-white md:min-h-screen rounded-l-2xl" >
-        <h1 className="text-center text-4xl pb-10 font-bold leading-14">
+    <main className="grid h-dvh w-full grid-cols-1 overflow-hidden md:grid-cols-2">
+      <section className="flex h-full overflow-hidden flex-col items-center justify-center gap-6 bg-[#3F8EFC] px-6 py-10 text-white md:min-h-screen rounded-l-2xl">
+        <h1 className="text-center text-3xl pb-10 font-bold leading-14">
           گزارش های خود را به آسانی
           <span className="block">مدیریت کنید</span>
         </h1>
-        <div className="relative w-full max-w-[400px] pb-16">
+        <div className="relative w-full max-w-[300px] pb-16">
           <Image
             src="/imges/lines.png"
             alt="مراحل راه‌اندازی حساب کاربری، تنظیم کارکنان و مدیریت گزارش‌ها"
@@ -19,8 +19,7 @@ export default function Start() {
           />
           <Link
             href="/login"
-            className="absolute bottom-0 right-0 flex h-[50px] w-[144px] items-center justify-center rounded-xl bg-white font-bold text-[#3F8EFC] transition hover:bg-blue-50"
-          >
+            className="absolute bottom-0 -right-4 flex h-11 w-32 items-center justify-center rounded-xl bg-white font-bold text-[#3f89f0] transition hover:bg-blue-50">
             شروع کنید
           </Link>
         </div>

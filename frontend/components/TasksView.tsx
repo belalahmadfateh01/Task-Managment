@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import {
   ChevronDown,
   ClipboardPlus,
@@ -72,6 +78,8 @@ export default function TasksView() {
   const [error, setError] = useState("");
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [statusTask, setStatusTask] = useState<Task | null>(null);
+  const menusContainerRef = useRef<HTMLDivElement>(null);
   // The admin-only /employee endpoint already returns teachers only.
   const teachers = employees;
 
@@ -124,6 +132,22 @@ export default function TasksView() {
 
   useEffect(() => {
     void load();
+  }, []);
+
+  useEffect(() => {
+    const closeMenusOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      menusContainerRef.current
+        ?.querySelectorAll<HTMLDetailsElement>("details[open]")
+        .forEach((menu) => {
+          if (!menu.contains(target)) menu.open = false;
+        });
+    };
+
+    document.addEventListener("pointerdown", closeMenusOnOutsidePointer);
+    return () =>
+      document.removeEventListener("pointerdown", closeMenusOnOutsidePointer);
   }, []);
 
   const createTask = async (event: FormEvent<HTMLFormElement>) => {
@@ -243,12 +267,11 @@ export default function TasksView() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div ref={menusContainerRef} className="mx-auto max-w-6xl space-y-5">
       {error && !formOpen && !taskToEdit && (
         <p
           role="alert"
-          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
-        >
+          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </p>
       )}
@@ -258,8 +281,7 @@ export default function TasksView() {
             type="button"
             aria-expanded={formOpen}
             onClick={() => setFormOpen(true)}
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-blue-700"
-          >
+            className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-blue-700">
             <Plus size={17} /> واگذاری فعالیت جدید
           </button>
         </div>
@@ -269,15 +291,13 @@ export default function TasksView() {
           className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !saving) resetForm();
-          }}
-        >
+          }}>
           <form
             onSubmit={createTask}
             role="dialog"
             aria-modal="true"
             aria-labelledby="task-form-title"
-            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"
-          >
+            className="pretty-scrollbar max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
             <header className="flex items-start justify-between gap-4 border-b border-blue-100 bg-blue-50/60 px-5 py-4 sm:px-7">
               <div className="flex items-center gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-blue-700 shadow-sm">
@@ -297,16 +317,14 @@ export default function TasksView() {
                 aria-label="بستن فرم فعالیت"
                 onClick={resetForm}
                 disabled={saving}
-                className="grid size-10 shrink-0 place-items-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
-              >
+                className="grid size-10 shrink-0 place-items-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">
                 <X size={21} />
               </button>
             </header>
             {error && (
               <p
                 role="alert"
-                className="mx-5 mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 sm:mx-7"
-              >
+                className="mx-5 mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 sm:mx-7">
                 {error}
               </p>
             )}
@@ -332,8 +350,7 @@ export default function TasksView() {
                 />
               </label>
               <div
-                className={`grid gap-4 ${taskToEdit ? "" : "sm:grid-cols-2"}`}
-              >
+                className={`grid gap-4 ${taskToEdit ? "" : "sm:grid-cols-2"}`}>
                 {!taskToEdit && (
                   <fieldset className="relative z-40 m-0 grid gap-2 border-0 p-0 text-sm font-semibold leading-5 text-slate-800">
                     <legend className="m-0 p-0">مسئول انجام</legend>
@@ -350,7 +367,7 @@ export default function TasksView() {
                           className="shrink-0 text-slate-500 transition-transform group-open:rotate-180"
                         />
                       </summary>
-                      <div className="absolute inset-x-0 top-full z-[70] mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-lg">
+                      <div className="pretty-scrollbar absolute inset-x-0 top-full z-[70] mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-lg">
                         {employeesLoading ? (
                           <p className="px-2 py-3 text-sm font-normal text-slate-500">
                             در حال بارگذاری کارمندان…
@@ -361,6 +378,25 @@ export default function TasksView() {
                           </p>
                         ) : teachers.length ? (
                           <div className="grid gap-2">
+                            <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-900">
+                              <span>انتخاب همه کارمندان</span>
+
+                              <input
+                                type="checkbox"
+                                checked={
+                                  teachers.length > 0 &&
+                                  selectedTeacherIds.length === teachers.length
+                                }
+                                onChange={(e) =>
+                                  setSelectedTeacherIds(
+                                    e.target.checked
+                                      ? teachers.map((teacher) => teacher.id)
+                                      : [],
+                                  )
+                                }
+                                className="size-4 shrink-0 accent-blue-600"
+                              />
+                            </label>
                             {teachers.map((teacher) => {
                               const checked = selectedTeacherIds.includes(
                                 teacher.id,
@@ -368,8 +404,7 @@ export default function TasksView() {
                               return (
                                 <label
                                   key={teacher.id}
-                                  className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm font-normal transition-colors ${checked ? "border-blue-300 bg-blue-50 text-blue-900" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-slate-50"}`}
-                                >
+                                  className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm font-normal transition-colors ${checked ? "border-blue-300 bg-blue-50 text-blue-900" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-slate-50"}`}>
                                   <span>
                                     {teacher.f_name} {teacher.l_name}
                                   </span>
@@ -438,8 +473,7 @@ export default function TasksView() {
                       type="button"
                       aria-label="حذف فایل انتخاب‌شده"
                       onClick={() => setAttachmentFile(null)}
-                      className="mr-2 text-red-600"
-                    >
+                      className="mr-2 text-red-600">
                       <X size={16} />
                     </button>
                   </div>
@@ -466,8 +500,7 @@ export default function TasksView() {
                             ),
                           )
                         }
-                        className="inline-flex min-w-0 items-center gap-2 truncate text-blue-700 hover:underline"
-                      >
+                        className="inline-flex min-w-0 items-center gap-2 truncate text-blue-700 hover:underline">
                         <Paperclip size={14} /> {taskToEdit.file_name}{" "}
                         {taskToEdit.file_size
                           ? `(${(Number(taskToEdit.file_size) / (1024 * 1024)).toFixed(1)} MB)`
@@ -482,8 +515,7 @@ export default function TasksView() {
                       onClick={() =>
                         setRemoveExistingFile((removed) => !removed)
                       }
-                      className="mr-2 shrink-0 text-red-600"
-                    >
+                      className="mr-2 shrink-0 text-red-600">
                       {removeExistingFile ? "بازگرداندن" : <X size={16} />}
                     </button>
                   </div>
@@ -498,8 +530,7 @@ export default function TasksView() {
                         employeesLoading ||
                         !!employeeLoadError))
                   }
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
                   <Send size={17} />
                   {saving
                     ? "در حال ذخیره…"
@@ -523,8 +554,7 @@ export default function TasksView() {
           tasks.map((task) => (
             <article
               key={task.id}
-              className="flex flex-col gap-4 rounded-lg border border-line bg-white p-4 sm:flex-row sm:items-start sm:justify-between"
-            >
+              className="flex flex-col gap-4 rounded-lg border border-line bg-white p-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <h3 className="font-semibold text-slate-900">{task.title}</h3>
                 {task.description && (
@@ -548,8 +578,7 @@ export default function TasksView() {
                         ),
                       )
                     }
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:underline"
-                  >
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:underline">
                     <Paperclip size={14} /> {task.file_name}
                   </button>
                 )}
@@ -577,8 +606,7 @@ export default function TasksView() {
                       .map((item) => (
                         <div
                           key={item.teacher_id}
-                          className="rounded-md bg-slate-50 p-3 text-sm"
-                        >
+                          className="rounded-md bg-slate-50 p-3 text-sm">
                           <p className="text-xs font-semibold text-slate-700">
                             پاسخ {item.teacher_f_name} {item.teacher_l_name}
                           </p>
@@ -598,40 +626,31 @@ export default function TasksView() {
                   </div>
                 )}
               </div>
-              <div className="flex w-full shrink-0 flex-wrap items-start gap-2 sm:w-auto">
-                <details className="group relative">
-                  <summary className="flex min-h-10 min-w-28 cursor-pointer list-none items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 [&::-webkit-details-marker]:hidden">
-                    وضعیت
-                    <ChevronDown
-                      size={16}
-                      aria-hidden
-                      className="text-slate-500 transition-transform group-open:rotate-180"
-                    />
-                  </summary>
-                  <div className="absolute right-0 top-full z-30 mt-1 w-64 max-w-[calc(100vw-3rem)] rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
-                    {task.assignments.length ? (
-                      <div className="max-h-48 space-y-2 overflow-y-auto">
-                        {task.assignments.map((item) => (
-                          <div
-                            key={item.teacher_id}
-                            className="flex items-center justify-between gap-3 text-xs"
-                          >
-                            <span className="min-w-0 truncate text-slate-600">
-                              {item.teacher_f_name} {item.teacher_l_name}
-                            </span>
-                            <span
-                              className={`shrink-0 rounded-full px-2 py-1 font-medium ${TASK_STATUS_STYLES[item.status] ?? "bg-slate-200 text-slate-700"}`}
-                            >
-                              {TASK_STATUS_LABELS[item.status] ?? item.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-500">بدون واگذاری</p>
-                    )}
-                  </div>
-                </details>
+              <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
+                <div className="flex flex-wrap items-center  gap-1.5">
+                  {task.assignments.length > 1 ? (
+                    <div className="flex flex-col items-start gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setStatusTask(task)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                        وضعیت
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                  ) : task.assignments.length === 1 ? (
+                    task.assignments.map((item) => (
+                      <span
+                        key={item.teacher_id}
+                        className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${TASK_STATUS_STYLES[item.status] ?? "bg-slate-200 text-slate-700"}`}>
+                        {TASK_STATUS_LABELS[item.status] ?? item.status}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-500">بدون واگذاری</span>
+                  )}
+                </div>
+
                 <div className="flex shrink-0 gap-1">
                   <button
                     type="button"
@@ -651,16 +670,14 @@ export default function TasksView() {
                       setError("");
                     }}
                     aria-label={`ویرایش وظیفه ${task.title}`}
-                    className="rounded-md px-3 py-2 text-sm text-sky-700 hover:bg-sky-50"
-                  >
+                    className="rounded-md px-3 py-2 text-sm text-sky-700 hover:bg-sky-50">
                     ویرایش
                   </button>
                   <button
                     type="button"
                     onClick={() => setTaskToDelete(task)}
                     aria-label={`حذف وظیفه ${task.title}`}
-                    className="rounded-md p-2 text-red-600 hover:bg-red-50"
-                  >
+                    className="rounded-md p-2 text-red-600 hover:bg-red-50">
                     <Trash2 size={17} />
                   </button>
                 </div>
@@ -673,6 +690,58 @@ export default function TasksView() {
           </p>
         )}
       </section>
+      {statusTask && (
+        <div
+          className="fixed inset-0 z-[70] grid place-items-center bg-slate-900/45 p-4"
+          onMouseDown={(event) =>
+            event.target === event.currentTarget && setStatusTask(null)
+          }>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="task-status-title"
+            className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl">
+            <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <h2 id="task-status-title" className="font-bold text-slate-900">
+                  وضعیت فعالیت
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">{statusTask.title}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="بستن"
+                onClick={() => setStatusTask(null)}
+                className="rounded-md p-2 text-red-500 hover:bg-red-100">
+                <X size={18} />
+              </button>
+            </header>
+            <div className="pretty-scrollbar max-h-[60vh] space-y-2 overflow-y-auto p-5">
+              {statusTask.assignments.map((item) => (
+                <div
+                  key={item.teacher_id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-4 py-3">
+                  <span className="text-sm font-medium text-slate-800">
+                    {item.teacher_f_name} {item.teacher_l_name}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${TASK_STATUS_STYLES[item.status] ?? "bg-slate-200 text-slate-700"}`}>
+                    {TASK_STATUS_LABELS[item.status] ?? item.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <footer className="flex justify-end border-t border-slate-100 px-5 py-3">
+              {/* <button
+                type="button"
+                onClick={() => setStatusTask(null)}
+                className="rounded-md bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+                بستن
+              </button> */}
+            </footer>
+          </section>
+        </div>
+      )}
       {taskToDelete && (
         <Dialog
           title="حذف وظیفه"

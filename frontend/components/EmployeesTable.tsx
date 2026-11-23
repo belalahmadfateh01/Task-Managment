@@ -1,14 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { Trash2 } from "lucide-react";
+import { Power } from "lucide-react";
 import type { Employee } from "@/lib/types";
 
 interface EmployeesTableProps {
   employees: Employee[];
   selectedIds: Array<string | number>;
   onToggle: (id: string | number) => void;
-  onDelete: (id: string | number) => void;
+  onToggleStatus: (employee: Employee) => void;
   onOpen: (employee: Employee) => void;
 }
 
@@ -23,15 +23,15 @@ export default function EmployeesTable({
   employees,
   selectedIds,
   onToggle,
-  onDelete,
+  onToggleStatus,
   onOpen,
 }: EmployeesTableProps) {
   return (
     <section className="overflow-hidden rounded-lg border border-line bg-white">
-      <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(110px,0.8fr)_52px] items-center border-b border-line px-4 py-3 text-xs font-medium text-slate-600 sm:grid-cols-[minmax(0,1.4fr)_minmax(150px,1fr)_70px] sm:px-7">
-        <span>اعضای تیم</span>
+      <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(110px,0.8fr)_52px] items-center border-b border-line px-4 py-3 text-xs font-semibold text-slate-600 sm:grid-cols-[minmax(0,1.4fr)_minmax(150px,1fr)_70px] sm:px-7">
+        <span className="mr-16">اعضای تیم</span>
         <span className="text-center">تاریخ پیوستن</span>
-        <span className="text-center">حذف</span>
+        <span className="text-center">وضعیت</span>
       </div>
 
       {employees.length === 0 ? (
@@ -44,13 +44,6 @@ export default function EmployeesTable({
             key={employee.id}
             className="grid min-h-[82px] grid-cols-[minmax(0,1.3fr)_minmax(110px,0.8fr)_52px] items-center border-b border-line/70 px-4 last:border-b-0 hover:bg-slate-50/70 sm:min-h-[86px] sm:grid-cols-[minmax(0,1.4fr)_minmax(150px,1fr)_70px] sm:px-7">
             <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(employee.id)}
-                onChange={() => onToggle(employee.id)}
-                aria-label={`انتخاب ${employee.name}`}
-                className="size-4 shrink-0 cursor-pointer accent-brand"
-              />
               <button
                 type="button"
                 onClick={() => onOpen(employee)}
@@ -83,11 +76,19 @@ export default function EmployeesTable({
             <span className="flex justify-center">
               <button
                 type="button"
-                onClick={() => onDelete(employee.id)}
-                aria-label={`حذف ${employee.name}`}
-                title="حذف کارمند"
-                className="grid size-8 place-items-center rounded-md border border-line text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600">
-                <Trash2 size={15} strokeWidth={1.7} />
+                role="switch"
+                aria-checked={employee.active}
+                onClick={() => onToggleStatus(employee)}
+                aria-label={`${employee.active ? "غیرفعال کردن" : "فعال کردن"} ${employee.name}`}
+                title={
+                  employee.active ? "غیرفعال کردن کارمند" : "فعال کردن کارمند"
+                }
+                className={`grid size-8 place-items-center rounded-md border transition ${
+                  employee.active
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                    : "border-red-300 bg-red-100 text-red-500 hover:bg-red-200"
+                }`}>
+                <Power size={15} strokeWidth={1.8} />
               </button>
             </span>
           </div>

@@ -16,6 +16,36 @@
 
 ## راه‌اندازی محلی
 
+### اجرای پروژه با Docker
+
+Docker و Docker Compose را نصب کنید، سپس در ریشهٔ پروژه فایل تنظیمات را بسازید و مقادیر نمونه را عوض کنید:
+
+```bash
+cp .env.example .env
+```
+
+مقدار `DB_HOST` در فایل `.env` برای اجرای محلی `localhost` است؛ Compose آن را داخل شبکهٔ Docker به `db` تغییر می‌دهد. پیش از اجرا، `DB_PASSWORD`، `JWT_SECRET` (حداقل ۳۲ کاراکتر) و اطلاعات `ADMIN_*` را تنظیم کنید. سرویس‌های دیتابیس، migration، API و فرانت‌اند با این فرمان ساخته و اجرا می‌شوند:
+
+```bash
+docker compose up --build -d
+```
+
+برنامه در `http://localhost:3002` و API در `http://localhost:3001` در دسترس است. migrationها هنگام راه‌اندازی و پیش از API اجرا می‌شوند. برای ساخت مدیر اولیه:
+
+```bash
+docker compose run --rm api npm run admin:create
+```
+
+گزارش اجرا و وضعیت سرویس‌ها را ببینید یا همه را متوقف کنید:
+
+```bash
+docker compose ps
+docker compose logs -f
+docker compose down
+```
+
+دادهٔ PostgreSQL و فایل‌های آپلودشده در volumeهای Docker نگهداری می‌شوند و با `docker compose down` حذف نمی‌شوند. برای حذف کامل آن داده‌ها نیز `docker compose down -v` را اجرا کنید.
+
 ### ۱. نصب و تنظیم بک‌اند
 
 از ریشهٔ پروژه وابستگی‌ها را نصب و فایل تنظیمات را بسازید:

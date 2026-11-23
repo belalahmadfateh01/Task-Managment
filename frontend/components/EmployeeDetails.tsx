@@ -40,18 +40,19 @@ export default function EmployeeDetails({
     ["نام و تخلص", employee.name],
     ["نام کاربری", employee.username || employee.email.split("@")[0]],
     ["ایمیل", employee.email],
+
     ["شماره تلفن", employee.phone || "ثبت نشده"],
     ["آدرس", employee.address || "ثبت نشده"],
     ["تاریخ ثبت سیستم", joined ? formatJalali(joined, "/") : employee.joinedAt],
-    [
-      "آخرین زمان ورود",
-      employee.lastLoginAt
-        ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }).format(new Date(employee.lastLoginAt))
-        : "هنوز وارد نشده",
-    ],
+    // [
+    //   "آخرین زمان ورود",
+    //   employee.lastLoginAt
+    //     ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    //         dateStyle: "medium",
+    //         timeStyle: "short",
+    //       }).format(new Date(employee.lastLoginAt))
+    //     : "هنوز وارد نشده",
+    // ],
   ];
 
   useEffect(() => {
@@ -101,21 +102,17 @@ export default function EmployeeDetails({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-600"
-        >
+          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-600">
           <ArrowRight size={16} /> بازگشت
         </button>
-        <span className="text-sm text-slate-500">پروفایل کارمند</span>
       </div>
 
       <div
         dir="ltr"
-        className="grid min-h-[680px] gap-4 lg:h-[min(920px,calc(100vh-190px))] lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,1fr)]"
-      >
+        className="grid min-h-[680px] gap-4 lg:h-[min(920px,calc(100vh-190px))] lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,1fr)]">
         <section
           dir="rtl"
-          className="flex min-h-[460px] flex-col rounded-2xl border-2 border-blue-500 bg-white p-5 sm:p-7"
-        >
+          className="flex min-h-[460px] flex-col rounded-2xl border-2 border-blue-500 bg-white p-5 sm:p-7">
           <div className="border-b-2 border-dotted border-blue-300 pb-7 text-right">
             <div className="me-auto max-w-xs">
               <h2 className="text-lg font-semibold text-slate-800 sm:text-xl">
@@ -126,7 +123,7 @@ export default function EmployeeDetails({
               </p>
             </div>
           </div>
-          <div className="mt-3 hidden grid-cols-[minmax(0,1fr)_minmax(105px,auto)_minmax(180px,auto)_24px] items-center gap-3 px-1 text-xs text-slate-400 sm:grid">
+          <div className="mt-3 hidden grid-cols-[minmax(0,1fr)_minmax(105px,auto)_minmax(180px,auto)_24px] items-center gap-3 px-1 text-xs text-slate-500 sm:grid">
             <span>عنوان گزارش</span>
             <span className="text-center">وضعیت</span>
             <span dir="ltr" className="text-left">
@@ -134,7 +131,7 @@ export default function EmployeeDetails({
             </span>
             <span />
           </div>
-          <div className="mt-1 min-h-0 divide-y divide-slate-100 overflow-y-auto">
+          <div className="pretty-scrollbar mt-1 min-h-0 divide-y divide-slate-100 overflow-y-auto">
             {reportsError ? (
               <p role="alert" className="py-8 text-center text-xs text-red-600">
                 {reportsError}
@@ -155,8 +152,7 @@ export default function EmployeeDetails({
                   <Link
                     key={report.id}
                     href={`/inbox/${report.id}`}
-                    className="grid min-h-15.5 grid-cols-[minmax(0,1fr)_auto_20px] items-center gap-x-2 gap-y-1 px-1 py-2 text-[10px] hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_minmax(105px,auto)_minmax(180px,auto)_24px] sm:gap-3 sm:py-0 sm:text-xs"
-                  >
+                    className="grid min-h-15.5 grid-cols-[minmax(0,1fr)_auto_20px] items-center gap-x-2 gap-y-1 px-1 py-2 text-[10px] hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_minmax(105px,auto)_minmax(180px,auto)_24px] sm:gap-3 sm:py-0 sm:text-xs">
                     <span className="min-w-0 truncate text-slate-700">
                       {report.title}
                     </span>
@@ -167,14 +163,12 @@ export default function EmployeeDetails({
                           : isPending
                             ? "bg-indigo-50 text-indigo-700"
                             : "bg-emerald-100 text-emerald-700"
-                      }`}
-                    >
+                      }`}>
                       {report.status}
                     </span>
                     <span
                       className="col-start-1 row-start-2 text-left text-[9px] text-slate-500 sm:col-start-3 sm:row-start-1 sm:whitespace-nowrap sm:text-xs"
-                      dir="ltr"
-                    >
+                      dir="ltr">
                       {report.date} - {report.time}
                     </span>
                   </Link>
@@ -187,29 +181,27 @@ export default function EmployeeDetails({
 
         <section
           dir="rtl"
-          className="flex min-h-[600px] flex-col overflow-y-auto rounded-2xl border-2 border-blue-500 bg-white p-5 sm:p-7"
-        >
-          <div className="relative mx-auto mt-8 grid size-48 shrink-0 place-items-center sm:size-56 xl:size-64">
+          className="pretty-scrollbar flex min-h-[600px] flex-col overflow-y-auto rounded-2xl border-2 border-blue-400 bg-white p-5 sm:p-7">
+          <div className="relative mx-auto mb-4 grid  shrink-0 place-items-center sm:size-25 xl:size-35">
             <Image
               src={employee.avatar}
               alt={`تصویر ${employee.name}`}
               fill
-              sizes="(min-width: 1280px) 256px, 224px"
+              sizes="(max-width: 640px) 14rem, (max-width: 1024px) 14rem, 16rem"
               unoptimized
-              className="rounded-xl border-2 border-blue-400 object-cover"
+              className="rounded-full border border-blue-400 object-cover"
             />
-            <button
+            {/* <button
               type="button"
               onClick={() => setProfileEditorOpen(true)}
               aria-label="تغییر تصویر پروفایل"
               title="تغییر تصویر پروفایل"
-              className="absolute -bottom-3 -right-3 grid size-12 place-items-center rounded-full border-2 border-white bg-brand text-white shadow-sm hover:bg-brand-deep"
-            >
+              className="absolute -bottom-3 -right-3 grid size-12 place-items-center rounded-full border-2 border-white bg-brand text-white shadow-sm hover:bg-brand-deep">
               <Pencil size={15} />
-            </button>
+            </button> */}
           </div>
-          <div className="mt-auto overflow-hidden rounded-xl border-2 border-blue-500">
-            <div className="flex items-center justify-between border-b-2 border-blue-500 bg-blue-50 px-3 py-2.5 sm:px-4">
+          <div className="mt-auto overflow-hidden rounded-xl border-2 border-blue-400">
+            <div className="flex items-center justify-between border-1 border-blue-400 bg-blue-50 px-3 py-2.5 sm:px-4">
               <h2 className="text-base font-semibold text-slate-800 sm:text-lg">
                 مشخصات کارمند
               </h2>
@@ -218,29 +210,29 @@ export default function EmployeeDetails({
                 onClick={() => setProfileEditorOpen(true)}
                 aria-label="ویرایش پروفایل کارمند"
                 title="ویرایش پروفایل"
-                className="relative grid size-10 place-items-center rounded-full bg-brand text-white hover:bg-brand-deep"
-              >
+                className="relative grid size-10 place-items-center rounded-full bg-brand text-white hover:bg-brand-deep">
                 <UserRound size={20} />
-                <Pencil size={11} className="absolute bottom-1.5 left-1.5" />
+
+                <span className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-white bg-white text-brand shadow-sm">
+                  <Pencil size={11} />
+                </span>
               </button>
             </div>
             <dl>
               {info.map(([label, value], index) => (
                 <div
                   key={label}
-                  className={`grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-sm sm:min-h-[68px] sm:px-4 sm:text-base ${index < info.length - 1 ? "border-b-2 border-dashed border-blue-400" : ""}`}
-                >
-                  <dt className="text-blue-700">{label}</dt>
+                  className={`grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-sm sm:min-h-[68px] sm:px-4 sm:text-base ${index < info.length - 1 ? "border-b-2 border-dashed border-slate-400" : ""}`}>
+                  <dt className="text-slate-800">{label}</dt>
                   <dd
-                    className="min-w-0 truncate text-left font-semibold text-blue-700"
+                    className="min-w-0 truncate text-left font-semibold text-slate-800"
                     dir={
                       label === "ایمیل" ||
                       label === "شماره تلفن" ||
                       label === "نام کاربری"
                         ? "ltr"
                         : undefined
-                    }
-                  >
+                    }>
                     {value}
                   </dd>
                 </div>

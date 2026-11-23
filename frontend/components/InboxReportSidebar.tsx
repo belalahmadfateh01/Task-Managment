@@ -27,7 +27,7 @@ export default function InboxReportSidebar({
 }: InboxReportSidebarProps) {
   return (
     <aside
-      className="order-2 flex min-h-0 flex-col gap-3 md:order-1 md:overflow-y-auto"
+      className="pretty-scrollbar order-2 flex min-h-0 flex-col gap-3 md:order-1 md:overflow-y-auto"
       dir="rtl">
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-bold text-slate-900">وضعیت گزارش</h2>
@@ -96,7 +96,7 @@ export default function InboxReportSidebar({
             ) : (
               <Clock3
                 size={17}
-                className="shrink-0 text-orange-500"
+                className="shrink-0 text-slate-300"
                 aria-hidden="true"
               />
             )}
@@ -117,7 +117,9 @@ export default function InboxReportSidebar({
             <span
               className={`mt-0.5 size-3.5 shrink-0 rounded-full border-2 ${
                 decision
-                  ? "border-emerald-600 bg-emerald-600"
+                  ? isRejected
+                    ? "border-red-600 bg-red-600"
+                    : "border-emerald-600 bg-emerald-600"
                   : "border-slate-300"
               }`}
               aria-hidden="true"

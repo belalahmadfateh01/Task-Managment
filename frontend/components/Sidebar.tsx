@@ -16,7 +16,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 flex h-screen flex-col gap-10 bg-brand px-3 py-5 text-white xl:gap-14 xl:px-5">
+    <aside className="sticky top-0 flex h-screen w-[230px] flex-col gap-14 bg-brand px-5 py-5 text-white">
       <Link
         href="/dashboard"
         className="flex items-center justify-center gap-3 rounded-xl border border-white/85 px-3 py-3.5 text-xl font-semibold"
@@ -28,7 +28,7 @@ export default function Sidebar() {
           height={36}
           aria-hidden
         />
-        <span className="max-xl:hidden">گزارش یار</span>
+        <span>گزارش یار</span>
       </Link>
       <nav aria-label="منوی اصلی" className="flex flex-col gap-1.5">
         {NAV.map(({ label, icon: Icon, href }) => {
@@ -40,14 +40,14 @@ export default function Sidebar() {
               href={href}
               title={label}
               aria-current={isActive ? "page" : undefined}
-              className={`relative flex items-center gap-3  px-3.5 py-3 font-medium transition-colors max-xl:justify-center max-xl:px-0 ${
+              className={`relative flex items-center gap-3 px-3.5 py-3 font-medium transition-colors ${
                 isActive
                   ? "w-[calc(100%+20px)] rounded-r-xl bg-white text-brand-deep shadow-sm"
                   : "hover:bg-white/15 w-[calc(100%+20px)] rounded-r-xl"
               }`}
             >
               <Icon size={22} strokeWidth={1.6} aria-hidden />
-              <span className="max-xl:hidden">{label}</span>
+              <span>{label}</span>
             </Link>
           );
         })}

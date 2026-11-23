@@ -13,6 +13,7 @@ export interface Employee {
   lastLoginAt?: string;
   phone?: string;
   address?: string;
+  active?: boolean;
 }
 
 export interface Report {
