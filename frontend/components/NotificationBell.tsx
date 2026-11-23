@@ -345,7 +345,7 @@ export default function NotificationBell() {
                 </p>
               )}
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
+              <div className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
                 {loading && items.length === 0 ? (
                   <p className="py-12 text-center text-sm text-slate-500">
                     در حال بارگذاری اعلان‌ها…

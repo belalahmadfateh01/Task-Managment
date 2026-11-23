@@ -74,7 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           )}
 
           <main
-            className={`flex-1 px-(--gap) pb-(--gap) [--gap:clamp(14px,1.5vw,24px)] ${
+            className={`pretty-scrollbar flex-1 px-(--gap) pb-(--gap) [--gap:clamp(14px,1.5vw,24px)] ${
               isSpacedAdminPage ? "pt-(--gap)" : ""
             } ${
               isInboxReportPage ? "min-h-0 overflow-hidden" : "overflow-y-auto"

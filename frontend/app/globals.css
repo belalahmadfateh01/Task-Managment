@@ -12,16 +12,7 @@
 
 @layer base {
   html {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
     overflow-x: hidden;
-  }
-
-  html::-webkit-scrollbar,
-  body::-webkit-scrollbar {
-    display: none;
-    width: 0;
-    height: 0;
   }
 
   body {
@@ -37,5 +28,40 @@
   :focus-visible {
     outline: 2px solid var(--color-brand-deep);
     outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .pretty-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #60a5fa #eff6ff;
+    scrollbar-gutter: stable;
+  }
+
+  .pretty-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .pretty-scrollbar::-webkit-scrollbar-track {
+    border-radius: 9999px;
+    background: #eff6ff;
+  }
+
+  .pretty-scrollbar::-webkit-scrollbar-thumb {
+    border: 2px solid #eff6ff;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+  }
+
+  .pretty-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+  }
+
+  @media (max-width: 640px) {
+    .pretty-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
   }
 }

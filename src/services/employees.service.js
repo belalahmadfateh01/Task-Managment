@@ -90,18 +90,20 @@ const updateEmployee = async (id, userId, role, data) => {
     "email",
     "phone",
     "address",
+    ...(role === "admin" ? ["password"] : []),
   ];
   const fields = Object.keys(data);
   if (fields.length === 0)
     throw new ApiError(400, "No fields provided for update");
   if (fields.some((field) => !allowedFields.includes(field)))
     throw new ApiError(400, "Invalid fields provided");
-  const values = fields.map((field) => {
+  const values = await Promise.all(fields.map(async (field) => {
     const value = data[field];
+    if (field === "password") return bcrypt.hash(value, 12);
     if (typeof value !== "string") return value;
     const normalized = value.trim();
     return field === "email" ? normalized.toLowerCase() : normalized || null;
-  });
+  }));
   const setClause = fields
     .map((field, index) => `${field} = $${index + 1}`)
     .join(", ");

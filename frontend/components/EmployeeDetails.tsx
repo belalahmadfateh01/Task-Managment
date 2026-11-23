@@ -44,15 +44,15 @@ export default function EmployeeDetails({
     ["شماره تلفن", employee.phone || "ثبت نشده"],
     ["آدرس", employee.address || "ثبت نشده"],
     ["تاریخ ثبت سیستم", joined ? formatJalali(joined, "/") : employee.joinedAt],
-    [
-      "آخرین زمان ورود",
-      employee.lastLoginAt
-        ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }).format(new Date(employee.lastLoginAt))
-        : "هنوز وارد نشده",
-    ],
+    // [
+    //   "آخرین زمان ورود",
+    //   employee.lastLoginAt
+    //     ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    //         dateStyle: "medium",
+    //         timeStyle: "short",
+    //       }).format(new Date(employee.lastLoginAt))
+    //     : "هنوز وارد نشده",
+    // ],
   ];
 
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function EmployeeDetails({
             </span>
             <span />
           </div>
-          <div className="mt-1 min-h-0 divide-y divide-slate-100 overflow-y-auto">
+          <div className="pretty-scrollbar mt-1 min-h-0 divide-y divide-slate-100 overflow-y-auto">
             {reportsError ? (
               <p role="alert" className="py-8 text-center text-xs text-red-600">
                 {reportsError}
@@ -181,7 +181,7 @@ export default function EmployeeDetails({
 
         <section
           dir="rtl"
-          className="flex min-h-[600px] flex-col overflow-y-auto rounded-2xl border-2 border-blue-400 bg-white p-5 sm:p-7">
+          className="pretty-scrollbar flex min-h-[600px] flex-col overflow-y-auto rounded-2xl border-2 border-blue-400 bg-white p-5 sm:p-7">
           <div className="relative mx-auto mb-4 grid  shrink-0 place-items-center sm:size-25 xl:size-35">
             <Image
               src={employee.avatar}

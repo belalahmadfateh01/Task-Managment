@@ -30,9 +30,10 @@ export default function Items({
         <p>فرستنده</p>
       </div>
       {items.map((report) => (
-        <div
+        <Link
           key={report.id}
-          className={`flex min-h-11 items-center gap-3 px-3 ${
+          href={`/inbox/${report.backendId ?? report.id}`}
+          className={`group flex min-h-11 items-center gap-3 px-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand ${
             report.category === "خوانده شده"
               ? "text-slate-500"
               : "text-slate-900"
@@ -52,13 +53,12 @@ export default function Items({
               />
             )}
           </div>
-          <Link
-            href={`/inbox/${report.backendId ?? report.id}`}
-            className="min-w-0 flex-[2] truncate text-center font-semibold hover:text-brand-deep"
+          <span
+            className="min-w-0 flex-[2] truncate text-center font-semibold group-hover:text-brand-deep"
             title={report.title}>
             {report.title}
-          </Link>
-          <label className="flex min-w-0 flex-1 justify-end items-center gap-3">
+          </span>
+          <span className="flex min-w-0 flex-1 justify-end items-center gap-3">
             <span className="truncate font-medium">{report.sender}</span>
             {report.senderAvatar && (
               <Image
@@ -77,8 +77,8 @@ export default function Items({
               aria-label={`انتخاب گزارش ارسالی از ${report.sender}`}
               className="size-4 shrink-0 accent-sky-500"
             /> */}
-          </label>
-        </div>
+          </span>
+        </Link>
       ))}
     </div>
   );

@@ -75,7 +75,7 @@ export default function InboxReportContent({
         </>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white px-5 py-5 sm:px-8">
+      <div className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200 bg-white px-5 py-5 sm:px-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] text-slate-500">فرستنده</p>

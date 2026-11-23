@@ -61,7 +61,7 @@ export default function ReportsTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="pretty-scrollbar overflow-x-auto">
         <table className="w-full min-w-[560px] border-collapse">
           <thead>
             <tr>

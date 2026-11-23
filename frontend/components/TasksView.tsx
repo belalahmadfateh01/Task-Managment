@@ -297,7 +297,7 @@ export default function TasksView() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="task-form-title"
-            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            className="pretty-scrollbar max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
             <header className="flex items-start justify-between gap-4 border-b border-blue-100 bg-blue-50/60 px-5 py-4 sm:px-7">
               <div className="flex items-center gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-blue-700 shadow-sm">
@@ -367,7 +367,7 @@ export default function TasksView() {
                           className="shrink-0 text-slate-500 transition-transform group-open:rotate-180"
                         />
                       </summary>
-                      <div className="absolute inset-x-0 top-full z-[70] mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-lg">
+                      <div className="pretty-scrollbar absolute inset-x-0 top-full z-[70] mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-lg">
                         {employeesLoading ? (
                           <p className="px-2 py-3 text-sm font-normal text-slate-500">
                             در حال بارگذاری کارمندان…
@@ -716,7 +716,7 @@ export default function TasksView() {
                 <X size={18} />
               </button>
             </header>
-            <div className="max-h-[60vh] space-y-2 overflow-y-auto p-5">
+            <div className="pretty-scrollbar max-h-[60vh] space-y-2 overflow-y-auto p-5">
               {statusTask.assignments.map((item) => (
                 <div
                   key={item.teacher_id}

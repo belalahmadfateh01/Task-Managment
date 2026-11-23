@@ -27,7 +27,7 @@ export default function InboxReportSidebar({
 }: InboxReportSidebarProps) {
   return (
     <aside
-      className="order-2 flex min-h-0 flex-col gap-3 md:order-1 md:overflow-y-auto"
+      className="pretty-scrollbar order-2 flex min-h-0 flex-col gap-3 md:order-1 md:overflow-y-auto"
       dir="rtl">
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-bold text-slate-900">وضعیت گزارش</h2>

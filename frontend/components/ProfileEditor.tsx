@@ -20,7 +20,7 @@ export type EditableEmployeeProfile = {
   user_name: string;
   email: string;
   phone?: string | null;
-  password?: number | string;
+  password?: string;
   address?: string | null;
   image?: string | null;
 };
@@ -108,10 +108,13 @@ export default function ProfileEditor({
             email: profile.email,
             phone: profile.phone ?? "",
             address: profile.address ?? "",
+            ...(isAdminEditingEmployee && profile.password
+              ? { password: profile.password }
+              : {}),
           }),
         },
       );
-      setProfile(updated);
+      setProfile({ ...updated, password: "" });
       onSaved?.(updated);
       if (!isAdminEditingEmployee) {
         window.dispatchEvent(
@@ -215,7 +218,7 @@ export default function ProfileEditor({
               role="dialog"
               aria-modal="true"
               aria-labelledby="profile-editor-title"
-              className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl sm:p-6">
+              className="pretty-scrollbar max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl sm:p-6">
               <div className="mb-5 flex items-center justify-between">
                 <div>
                   <h2
@@ -297,39 +300,59 @@ export default function ProfileEditor({
                           ["user_name", "نام کاربری"],
                           ["email", "ایمیل"],
                           ["phone", "شماره تلفن"],
-                          ["password", "پسورد"],
-
-                          ["address", "نشانی"],
                         ] as const
                       ).map(([key, label]) => (
                         <label
                           key={key}
-                          className={`grid gap-1.5 text-sm text-slate-700 ${key === "address" ? "sm:col-span-2" : ""}`}>
+                          className="grid gap-1.5 text-sm text-slate-700">
                           {label}
-                          {key === "address" ? (
-                            <textarea
-                              value={profile.address ?? ""}
-                              onChange={(event) =>
-                                updateField(key, event.target.value)
-                              }
-                              maxLength={1000}
-                              rows={2}
-                              className="rounded-md border border-line px-3 py-2"
-                            />
-                          ) : (
-                            <input
-                              required={key !== "phone"}
-                              type={key === "email" ? "email" : "text"}
-                              value={profile[key] ?? ""}
-                              onChange={(event) =>
-                                updateField(key, event.target.value)
-                              }
-                              maxLength={key === "phone" ? 32 : undefined}
-                              className="h-10 rounded-md border border-line px-3"
-                            />
-                          )}
+                          <input
+                            required={key !== "phone"}
+                            type={key === "email" ? "email" : "text"}
+                            value={profile[key] ?? ""}
+                            onChange={(event) =>
+                              updateField(key, event.target.value)
+                            }
+                            maxLength={key === "phone" ? 32 : undefined}
+                            className="h-10 rounded-md border border-line px-3"
+                          />
                         </label>
                       ))}
+                      {isAdminEditingEmployee && (
+                        <label className="grid gap-1.5 text-sm text-slate-700">
+                          رمز عبور جدید (اختیاری)
+                          <input
+                            type="password"
+                            autoComplete="new-password"
+                            minLength={8}
+                            maxLength={128}
+                            value={profile.password ?? ""}
+                            onChange={(event) =>
+                              setProfile((current) => ({
+                                ...current,
+                                password: event.target.value,
+                              }))
+                            }
+                            placeholder="رمز تازه را وارد کنید"
+                            className="h-10 rounded-md border border-line px-3"
+                          />
+                          {/* <span className="text-xs font-normal text-slate-500">
+                            رمز فعلی به‌دلیل ذخیره‌سازی امن قابل نمایش نیست؛ برای حفظ آن این کادر را خالی بگذارید.
+                          </span> */}
+                        </label>
+                      )}
+                      <label className="grid gap-1.5 text-sm text-slate-700 sm:col-span-2">
+                        نشانی
+                        <textarea
+                          value={profile.address ?? ""}
+                          onChange={(event) =>
+                            updateField("address", event.target.value)
+                          }
+                          maxLength={1000}
+                          rows={2}
+                          className="rounded-md border border-line px-3 py-2"
+                        />
+                      </label>
                       <div className="flex justify-end gap-2 pt-2 sm:col-span-2">
                         <button
                           type="button"

@@ -968,7 +968,7 @@ export function EmployeeReportComposer() {
               value={content}
               onChange={(event) => setContent(event.currentTarget.value)}
               rows={4}
-              className="min-h-25 max-h-70 resize-none overflow-y-auto rounded-lg border border-slate-200 px-3 py-3 text-sm leading-7 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="pretty-scrollbar min-h-25 max-h-70 resize-none overflow-y-auto rounded-lg border border-slate-200 px-3 py-3 text-sm leading-7 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               placeholder="متن گزارش را اینجا بنویسید..."
             />
           </label>

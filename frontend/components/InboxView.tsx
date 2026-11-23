@@ -333,7 +333,7 @@ export default function InboxView({
         )}
 
         <div
-          className="col-span-full grid min-h-0 grid-cols-1 grid-rows-[auto_auto] gap-3 overflow-y-auto md:grid-cols-[minmax(190px,240px)_minmax(0,1fr)] md:grid-rows-1 md:overflow-hidden"
+          className="pretty-scrollbar col-span-full grid min-h-0 grid-cols-1 grid-rows-[auto_auto] gap-3 overflow-y-auto md:grid-cols-[minmax(190px,240px)_minmax(0,1fr)] md:grid-rows-1 md:overflow-hidden"
           dir="ltr">
           <InboxReportSidebar
             report={activeReport}

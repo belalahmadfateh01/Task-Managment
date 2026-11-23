@@ -10,6 +10,7 @@ npm run dev
 
 `BACKEND_URL` در `.env` باید به API اشاره کند (پیش‌فرض: `http://localhost:3001`). اگر API مستقیم از مرورگر فراخوانی می‌شود، `NEXT_PUBLIC_API_URL` را هم تنظیم کنید و مبدأ فرانت‌اند را در `CLIENT_ORIGINS` بک‌اند مجاز کنید.
 
+
 برای بررسی TypeScript:
 
 ```bash

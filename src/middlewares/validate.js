@@ -73,6 +73,7 @@ const schemas = {
     return errors;
   },
   profile: (req) => {
+    const isAdmin = req.employee?.role === "admin";
     const allowed = [
       "f_name",
       "l_name",
@@ -80,6 +81,7 @@ const schemas = {
       "email",
       "phone",
       "address",
+      ...(isAdmin ? ["password"] : []),
     ];
     const fields = Object.keys(req.body);
     const errors = [];
@@ -87,6 +89,10 @@ const schemas = {
     if (fields.some((field) => !allowed.includes(field)))
       errors.push("Only profile fields can be updated");
     if ("email" in req.body) errors.push(emailError(req.body.email));
+    if ("password" in req.body)
+      errors.push(
+        requiredText(req.body.password, "password", { min: 8, max: 128 }),
+      );
     for (const field of ["f_name", "l_name", "user_name"])
       if (field in req.body) errors.push(requiredText(req.body[field], field));
     if (

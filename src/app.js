@@ -28,7 +28,7 @@ app.use((req, res, next) => {
     })));
     next();
 });
-const allowedOrigins = (process.env.CLIENT_ORIGINS || "http://localhost:3000,http://localhost:3001")
+const allowedOrigins = (process.env.CLIENT_ORIGINS || "http://localhost:3000,http://localhost:3002,http://127.0.0.1:3000,http://127.0.0.1:3002")
     .split(",").map(origin => origin.trim()).filter(Boolean);
 app.use(createCorsMiddleware(allowedOrigins));
 
